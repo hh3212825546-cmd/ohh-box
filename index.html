@@ -13,7 +13,7 @@
         .preview-area { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; position: relative; }
         
         .header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
-        .brand { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
+        .brand { margin: 0; font-size: 26px; font-weight: 900; letter-spacing: -0.5px; }
         .brand-tag { font-size: 11px; font-weight: 600; background: var(--primary); color: white; padding: 3px 8px; border-radius: 20px; }
 
         .setting-card { background: #f8fafc; padding: 16px; border-radius: var(--radius); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
@@ -22,10 +22,13 @@
         label { font-size: 13px; font-weight: 600; color: var(--text-sub); display: flex; justify-content: space-between; align-items: center;}
         select, input[type="text"] { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; background: white; color: var(--text-main); font-weight: 500; outline: none; transition: border-color 0.2s; box-sizing: border-box;}
         
-        /* 双重取色器 + 快捷色盘 */
-        .color-picker-wrapper { display: flex; align-items: center; gap: 8px; flex: 1; background: white; border: 1px solid var(--border); border-radius: 8px; padding: 4px 8px; overflow: hidden; }
-        input[type="color"] { border: none; border-radius: 4px; width: 34px; height: 34px; cursor: pointer; background: white; padding: 0; }
-        .color-hex { border: none !important; padding: 0 !important; width: 100% !important; font-size: 13px !important; font-family: monospace; color: var(--text-sub) !important; background: transparent !important; }
+        /* 双重取色器 + 吸管工具 */
+        .color-picker-wrapper { display: flex; align-items: center; gap: 6px; flex: 1; background: white; border: 1px solid var(--border); border-radius: 8px; padding: 4px 6px; overflow: hidden; }
+        input[type="color"] { border: none; border-radius: 4px; width: 30px; height: 30px; cursor: pointer; background: white; padding: 0; }
+        .color-hex { border: none !important; padding: 0 !important; width: 60px !important; font-size: 13px !important; font-family: monospace; color: var(--text-sub) !important; background: transparent !important; }
+        .btn-picker { background: #f1f5f9; border: 1px solid var(--border); border-radius: 6px; padding: 4px 6px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: 0.2s;}
+        .btn-picker:hover { background: #e2e8f0; }
+
         .quick-palette { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap;}
         .swatch { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 1px solid rgba(0,0,0,0.1); transition: transform 0.1s;}
         .swatch:active { transform: scale(0.8); }
@@ -44,7 +47,11 @@
         .btn-secondary { background: white; color: var(--text-main); border: 1px solid var(--border); }
         .btn-danger { background: #ef4444; color: white; }
 
-        canvas { display: block; max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 20px 50px rgba(0,0,0,0.12); border-radius: 12px; background: white; touch-action: none; }
+        canvas { display: block; max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 20px 50px rgba(0,0,0,0.12); border-radius: 12px; background: white; touch-action: none; cursor: crosshair;}
+
+        /* 吸管提示弹窗 */
+        #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(15, 23, 42, 0.9); color: white; padding: 12px 24px; border-radius: 30px; z-index: 1000; display: none; font-size: 14px; font-weight: bold; pointer-events: none; box-shadow: 0 10px 25px rgba(0,0,0,0.2); animation: pop 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28); }
+        @keyframes pop { 0% { transform: translate(-50%, -20px) scale(0.8); opacity: 0; } 100% { transform: translate(-50%, 0) scale(1); opacity: 1; } }
 
         @media (max-width: 768px) {
             body { flex-direction: column; }
@@ -55,8 +62,10 @@
     </style>
 </head>
 <body>
+    <div id="toast">🎯 请点击右侧画面提取颜色</div>
+
     <div class="sidebar">
-        <div class="header"><h1 class="brand">OHH BOX</h1><span class="brand-tag">v2.8 Max</span></div>
+        <div class="header"><h1 class="brand">OHH BOX</h1><span class="brand-tag">PRO</span></div>
         
         <div class="setting-card">
             <div class="card-title">🖼️ 核心图像与排版</div>
@@ -70,7 +79,7 @@
             <label style="margin-top:8px; color: var(--accent);">背景区域占比 <span id="bgSplitRatioVal">50</span>%</label>
             <input type="range" id="bgSplitRatio" min="10" max="90" value="50">
             
-            <label style="margin-top:8px;">图片微调缩放 <span id="imgScaleVal">100</span>%</label>
+            <label style="margin-top:8px;">主图微调缩放 <span id="imgScaleVal">100</span>%</label>
             <input type="range" id="imgScale" min="50" max="300" value="100">
             <div style="display:flex; gap:16px;">
                 <div style="flex:1"><label>X偏移</label><input type="range" id="imgOffsetX" min="-400" max="400" value="0"></div>
@@ -79,7 +88,7 @@
         </div>
 
         <div class="setting-card">
-            <div class="card-title">🎨 氛围背景</div>
+            <div class="card-title">🎨 氛围背景与色彩</div>
             <select id="bgType"><option value="solid">纯色填充</option><option value="gradient">平滑渐变</option><option value="stripes">艺术条纹</option><option value="image">自定义背景图</option></select>
             <div id="imageControls" style="display:none; margin-top:5px;"><input type="file" id="bgImageUpload" accept="image/*"></div>
             
@@ -87,15 +96,16 @@
                 <div class="color-picker-wrapper">
                     <input type="color" id="color1" value="#fef08a">
                     <input type="text" id="color1Hex" class="color-hex" value="#fef08a">
+                    <button class="btn-picker" id="pickColor1" title="在图片上提取颜色">🎯</button>
                 </div>
                 <div class="color-picker-wrapper">
                     <input type="color" id="color2" value="#f97316">
                     <input type="text" id="color2Hex" class="color-hex" value="#f97316">
+                    <button class="btn-picker" id="pickColor2" title="在图片上提取颜色">🎯</button>
                 </div>
             </div>
-            
+
             <div id="quickPaletteArea" style="margin-top: 6px;">
-                <div style="font-size: 11px; color: var(--text-sub);">👆 点击下方色块可快捷更换 颜色1 (适配手机)：</div>
                 <div class="quick-palette">
                     <div class="swatch" data-c="#fef08a" style="background:#fef08a;"></div>
                     <div class="swatch" data-c="#f97316" style="background:#f97316;"></div>
@@ -133,10 +143,13 @@
             <label style="margin-top:8px;">粒子总数量 <span id="particleCountVal">30</span></label>
             <input type="range" id="particleCount" min="5" max="150" value="30">
             
-            <div style="display:flex; gap:16px;">
-                <div style="flex:1"><label>形状大小 <span id="sizeVal">35</span></label><input type="range" id="sizeRange" min="15" max="150" value="35"></div>
-                <div style="flex:1"><label>边缘羽化 <span id="featherVal">10</span></label><input type="range" id="featherRange" min="0" max="40" value="10"></div>
-            </div>
+            <label style="margin-top:8px;">形状基础大小 <span id="sizeVal">35</span></label>
+            <input type="range" id="sizeRange" min="15" max="150" value="35">
+            <label style="margin-top:4px; color: var(--accent);">大小差异 (随机性) <span id="sizeVarVal">50</span>%</label>
+            <input type="range" id="sizeVar" min="0" max="100" value="50">
+            
+            <label style="margin-top:4px;">边缘羽化 <span id="featherVal">10</span></label>
+            <input type="range" id="featherRange" min="0" max="40" value="10">
             
             <label style="margin-top:8px; cursor:pointer;"><input type="checkbox" id="unifiedRotation" style="margin-right:8px;">锁定形状统一朝向</label>
             <div id="angleControl" style="display:none; margin-top:4px;"><input type="range" id="angleRange" min="0" max="360" value="0"></div>
@@ -156,22 +169,34 @@
     <div class="preview-area"><canvas id="mainCanvas"></canvas></div>
 
     <script>
-        const SITE_CONFIG = { title: "OHH BOX", subtitle: "上传一张照片，开始创作", author: "@ohh" };
+        // ==========================================
+        // ⚙️ 网站核心配置后台 (仅修改代码可见)
+        // ==========================================
+        const SITE_CONFIG = { title: "OHH BOX", subtitle: "上传一张照片，开始创作", author: "@独立创作者" };
 
         const canvas = document.getElementById('mainCanvas'); const ctx = canvas.getContext('2d');
         let currentImage = null, currentBgImage = null, particles = [], isDrawing = false, lastPos = {x:0, y:0};
         let isRecording = false, mediaRecorder, recordedChunks = [];
         let animationFrameId = null;
+        let pickingColorFor = null; // 吸管状态标记
 
         const ui = {
             canvasRatio: document.getElementById('canvasRatio'), layoutDir: document.getElementById('layoutDir'), bgSplitRatio: document.getElementById('bgSplitRatio'),
             bgType: document.getElementById('bgType'), color1: document.getElementById('color1'), color1Hex: document.getElementById('color1Hex'), color2: document.getElementById('color2'), color2Hex: document.getElementById('color2Hex'), stripeDensity: document.getElementById('stripeDensity'),
             featherRange: document.getElementById('featherRange'), shapeType: document.getElementById('shapeType'), customText: document.getElementById('customText'),
-            sizeRange: document.getElementById('sizeRange'), unifiedRotation: document.getElementById('unifiedRotation'), angleRange: document.getElementById('angleRange'), angleControl: document.getElementById('angleControl'),
+            sizeRange: document.getElementById('sizeRange'), sizeVar: document.getElementById('sizeVar'), unifiedRotation: document.getElementById('unifiedRotation'), angleRange: document.getElementById('angleRange'), angleControl: document.getElementById('angleControl'),
             imgScale: document.getElementById('imgScale'), imgOffsetX: document.getElementById('imgOffsetX'), imgOffsetY: document.getElementById('imgOffsetY'), particleCount: document.getElementById('particleCount')
         };
 
-        // 快捷色盘逻辑
+        // ==========================================
+        // 吸管工具引擎
+        // ==========================================
+        function showToast(msg) { const t = document.getElementById('toast'); t.innerText = msg; t.style.display = 'block'; }
+        function hideToast() { document.getElementById('toast').style.display = 'none'; }
+        
+        document.getElementById('pickColor1').onclick = () => { pickingColorFor = 'color1'; showToast('🎯 请点击右侧画面提取颜色'); };
+        document.getElementById('pickColor2').onclick = () => { pickingColorFor = 'color2'; showToast('🎯 请点击右侧画面提取颜色'); };
+
         document.querySelectorAll('.swatch').forEach(sw => {
             sw.addEventListener('click', (e) => {
                 const c = e.target.getAttribute('data-c');
@@ -189,9 +214,10 @@
             generateRandomParticles(); render();
         }
 
+        // 修改：为每个粒子分配一个独立的随机大小因子 randSize
         function generateRandomParticles() {
-            particles = []; const count = parseInt(ui.particleCount.value); const size = parseInt(ui.sizeRange.value);
-            for(let i=0; i<count; i++) particles.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, size: size*(0.6+Math.random()*0.8), rotation: Math.random()*Math.PI*2, colorIndex: Math.random()>0.5?0:1 });
+            particles = []; const count = parseInt(ui.particleCount.value); 
+            for(let i=0; i<count; i++) particles.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, randSize: Math.random(), rotation: Math.random()*Math.PI*2, colorIndex: Math.random()>0.5?0:1 });
         }
 
         ui.canvasRatio.onchange = updateCanvasSize;
@@ -205,7 +231,7 @@
         ui.shapeType.onchange = (e) => { ui.customText.style.display = e.target.value === 'text' ? 'block' : 'none'; render(); };
         ui.unifiedRotation.onchange = (e) => { ui.angleControl.style.display = e.target.checked ? 'block' : 'none'; render(); };
         
-        ['layoutDir', 'bgSplitRatio', 'customText', 'angleRange', 'imgScale', 'imgOffsetX', 'imgOffsetY', 'featherRange', 'sizeRange', 'particleCount', 'stripeDensity'].forEach(k => {
+        ['layoutDir', 'bgSplitRatio', 'customText', 'angleRange', 'imgScale', 'imgOffsetX', 'imgOffsetY', 'featherRange', 'sizeRange', 'sizeVar', 'particleCount', 'stripeDensity'].forEach(k => {
             if(ui[k]) { ui[k].oninput = ui[k].onchange = () => { if(document.getElementById(k+'Val')) document.getElementById(k+'Val').innerText = ui[k].value; if(k==='particleCount') generateRandomParticles(); render(); }; }
         });
 
@@ -219,11 +245,29 @@
         };
 
         function getPos(e) { const r = canvas.getBoundingClientRect(); const cx = e.touches ? e.touches[0].clientX : e.clientX; const cy = e.touches ? e.touches[0].clientY : e.clientY; return { x: (cx - r.left) * (canvas.width / r.width), y: (cy - r.top) * (canvas.height / r.height) }; }
-        function startDrawing(e) { if(!currentImage) return; isDrawing = true; lastPos = getPos(e); }
+        
+        function startDrawing(e) { 
+            if(!currentImage) return; 
+            const pos = getPos(e);
+            
+            // 🎯 拦截吸管取色
+            if (pickingColorFor) {
+                try {
+                    const pixel = ctx.getImageData(pos.x, pos.y, 1, 1).data;
+                    const hex = '#' + ((1<<24) + (pixel[0]<<16) + (pixel[1]<<8) + pixel[2]).toString(16).slice(1).toUpperCase();
+                    ui[pickingColorFor].value = hex; ui[pickingColorFor + 'Hex'].value = hex;
+                } catch(err) {
+                    alert('注意：跨域图片可能会受到浏览器安全限制无法取色，本地上传的图片不受影响。');
+                }
+                pickingColorFor = null; hideToast(); render(); return; 
+            }
+            isDrawing = true; lastPos = pos; 
+        }
+        
         function moveDrawing(e) {
-            if(!isDrawing) return; const pos = getPos(e);
+            if(!isDrawing || pickingColorFor) return; const pos = getPos(e);
             if (Math.hypot(pos.x - lastPos.x, pos.y - lastPos.y) > 15) {
-                particles.push({ x: pos.x + (Math.random()-0.5)*40, y: pos.y + (Math.random()-0.5)*40, size: parseInt(ui.sizeRange.value)*(0.6+Math.random()*0.8), rotation: Math.random()*Math.PI*2, colorIndex: Math.random()>0.5?0:1 });
+                particles.push({ x: pos.x + (Math.random()-0.5)*40, y: pos.y + (Math.random()-0.5)*40, randSize: Math.random(), rotation: Math.random()*Math.PI*2, colorIndex: Math.random()>0.5?0:1 });
                 lastPos = pos; render();
             }
             if(e.touches && e.cancelable) e.preventDefault();
@@ -259,34 +303,48 @@
 
             const layout = ui.layoutDir.value; 
             const splitRatio = parseInt(ui.bgSplitRatio.value) / 100;
+            
+            // 视口与裁剪区域计算
             let imgR = {x:0, y:0, w:canvas.width, h:canvas.height}; 
             let bgR = {x:0, y:0, w:canvas.width, h:canvas.height};
             
-            // 核心：自定义背景比例切割
             if(layout==='top') { imgR.h = canvas.height * (1 - splitRatio); bgR.y = imgR.h; bgR.h = canvas.height * splitRatio; } 
             else if(layout==='bottom') { bgR.h = canvas.height * splitRatio; imgR.y = bgR.h; imgR.h = canvas.height * (1 - splitRatio); } 
             else if(layout==='left') { imgR.w = canvas.width * (1 - splitRatio); bgR.x = imgR.w; bgR.w = canvas.width * splitRatio; } 
             else if(layout==='right') { bgR.w = canvas.width * splitRatio; imgR.x = bgR.w; imgR.w = canvas.width * (1 - splitRatio); }
 
+            // ==========================================
+            // 🪟 核心修复：视口解耦引擎
+            // 主图的缩放和位置不再受 splitRatio (imgR) 的直接干扰
+            // 它是以 "一半的画布" 为基准计算，让它始终固定在自己半区中心
+            // ==========================================
+            let defW = canvas.width, defH = canvas.height;
+            if(layout === 'top' || layout === 'bottom') defH = canvas.height / 2;
+            if(layout === 'left' || layout === 'right') defW = canvas.width / 2;
+            
+            const scale = parseInt(ui.imgScale.value)/100, ox = parseInt(ui.imgOffsetX.value), oy = parseInt(ui.imgOffsetY.value);
+            const s = Math.max(defW/currentImage.width, defH/currentImage.height) * scale;
+            
+            let defX = layout === 'right' ? canvas.width/2 : 0;
+            let defY = layout === 'bottom' ? canvas.height/2 : 0;
+            
+            const dx = defX + (defW - currentImage.width * s) / 2 + ox;
+            const dy = defY + (defH - currentImage.height * s) / 2 + oy;
+            // ==========================================
+
             if(ui.bgType.value==='image' && currentBgImage){
-                let s = Math.max(canvas.width/currentBgImage.width, canvas.height/currentBgImage.height);
-                ctx.drawImage(currentBgImage, (canvas.width-currentBgImage.width*s)/2, (canvas.height-currentBgImage.height*s)/2, currentBgImage.width*s, currentBgImage.height*s);
+                let bgs = Math.max(canvas.width/currentBgImage.width, canvas.height/currentBgImage.height);
+                ctx.drawImage(currentBgImage, (canvas.width-currentBgImage.width*bgs)/2, (canvas.height-currentBgImage.height*bgs)/2, currentBgImage.width*bgs, currentBgImage.height*bgs);
             } else {
                 let g = ctx.createLinearGradient(0,0,canvas.width,canvas.height); g.addColorStop(0,ui.color1.value); g.addColorStop(1,ui.color2.value);
                 ctx.fillStyle = ui.bgType.value==='gradient'?g:ui.color1.value; ctx.fillRect(0,0,canvas.width,canvas.height);
-                
-                // 核心：条纹疏密控制
                 if(ui.bgType.value==='stripes'){ 
-                    ctx.fillStyle=ui.color2.value; 
-                    const density = parseInt(ui.stripeDensity.value);
+                    ctx.fillStyle=ui.color2.value; const density = parseInt(ui.stripeDensity.value);
                     for(let i=0; i<canvas.width+canvas.height; i+=density*2) ctx.fillRect(i, 0, density, canvas.height); 
                 }
             }
 
             const imgCanvas = document.createElement('canvas'); imgCanvas.width=canvas.width; imgCanvas.height=canvas.height; const iCtx = imgCanvas.getContext('2d');
-            const scale = parseInt(ui.imgScale.value)/100, ox=parseInt(ui.imgOffsetX.value), oy=parseInt(ui.imgOffsetY.value);
-            const s = Math.max(imgR.w/currentImage.width, imgR.h/currentImage.height)*scale;
-            const dx = imgR.x+(imgR.w-currentImage.width*s)/2+ox, dy = imgR.y+(imgR.h-currentImage.height*s)/2+oy;
             
             iCtx.save(); iCtx.beginPath(); iCtx.rect(imgR.x, imgR.y, imgR.w, imgR.h); iCtx.clip();
             iCtx.drawImage(currentImage, dx, dy, currentImage.width*s, currentImage.height*s); iCtx.restore();
@@ -296,13 +354,17 @@
             iCtx.globalCompositeOperation = isStripe ? 'source-over' : 'destination-out';
             
             const activeParticles = particles.slice(0, drawLimit);
+            const baseSize = parseInt(ui.sizeRange.value);
+            const varRatio = parseInt(ui.sizeVar.value) / 100;
 
             activeParticles.forEach(p => {
                 if(p.x>imgR.x && p.x<imgR.x+imgR.w && p.y>imgR.y && p.y<imgR.y+imgR.h){
                     iCtx.save(); iCtx.translate(p.x, p.y); iCtx.rotate(rot??p.rotation);
                     if(isStripe) iCtx.fillStyle = p.colorIndex === 0 ? ui.color1.value : ui.color2.value;
                     else { iCtx.fillStyle='black'; if(feather>0){ iCtx.shadowColor='black'; iCtx.shadowBlur=feather; } }
-                    if(drawShape(iCtx, ui.shapeType.value, p.size)) iCtx.fill(); 
+                    // 🎲 动态计算随机差异大小
+                    const pSize = baseSize * (1 - varRatio) + p.randSize * baseSize * varRatio * 2;
+                    if(drawShape(iCtx, ui.shapeType.value, pSize)) iCtx.fill(); 
                     iCtx.restore();
                 }
             });
@@ -310,55 +372,42 @@
 
             activeParticles.forEach(p => {
                 if(p.x>bgR.x && p.x<bgR.x+bgR.w && p.y>bgR.y && p.y<bgR.y+bgR.h){
-                    const fCanvas = document.createElement('canvas'); fCanvas.width=p.size*2+feather; fCanvas.height=p.size*2+feather; const fCtx = fCanvas.getContext('2d'); 
-                    fCtx.translate(p.size+feather/2, p.size+feather/2); fCtx.rotate(rot??p.rotation);
+                    const pSize = baseSize * (1 - varRatio) + p.randSize * baseSize * varRatio * 2;
+                    const fCanvas = document.createElement('canvas'); fCanvas.width=pSize*2+feather; fCanvas.height=pSize*2+feather; const fCtx = fCanvas.getContext('2d'); 
+                    fCtx.translate(pSize+feather/2, pSize+feather/2); fCtx.rotate(rot??p.rotation);
                     fCtx.fillStyle='black'; if(feather>0){ fCtx.shadowColor='black'; fCtx.shadowBlur=feather; }
-                    if(drawShape(fCtx, ui.shapeType.value, p.size)) fCtx.fill();
+                    if(drawShape(fCtx, ui.shapeType.value, pSize)) fCtx.fill();
                     fCtx.globalCompositeOperation='source-in'; fCtx.shadowColor='transparent';
                     
                     let sx = p.x, sy = p.y; 
-                    if(layout==='top') sy-=imgR.h; else if(layout==='bottom') sy+=imgR.h; else if(layout==='left') sx-=imgR.w; else if(layout==='right') sx+=imgR.w;
+                    if(layout==='top') sy-=canvas.height * (1-splitRatio); else if(layout==='bottom') sy+=canvas.height * splitRatio; 
+                    else if(layout==='left') sx-=canvas.width * (1-splitRatio); else if(layout==='right') sx+=canvas.width * splitRatio;
                     
-                    fCtx.drawImage(currentImage, dx-sx+p.size+feather/2, dy-sy+p.size+feather/2, currentImage.width*s, currentImage.height*s);
-                    ctx.drawImage(fCanvas, p.x-p.size-feather/2, p.y-p.size-feather/2);
+                    fCtx.drawImage(currentImage, dx-sx+pSize+feather/2, dy-sy+pSize+feather/2, currentImage.width*s, currentImage.height*s);
+                    ctx.drawImage(fCanvas, p.x-pSize-feather/2, p.y-pSize-feather/2);
                 }
             });
         }
 
-        // ==========================================
-        // 核心：基于恒定总时长的动画引擎 (无论粒子多少，都在 2.5 秒内播完)
-        // ==========================================
         function playAnimation(onComplete = null) {
             if(!currentImage) return;
             if(animationFrameId) cancelAnimationFrame(animationFrameId);
-            
-            let startTime = null;
-            const TOTAL_DURATION = 2500; // 固定动画总时长 2500 毫秒 (2.5秒)
-            
+            let startTime = null; const TOTAL_DURATION = 2500; 
             function step(timestamp) {
                 if(!startTime) startTime = timestamp;
-                // 计算当前时间进度 (0 到 1)
                 let progress = Math.min((timestamp - startTime) / TOTAL_DURATION, 1);
-                
-                // 加入一点缓动效果，让最后出现的粒子变慢一点，更自然
                 let easeOutProgress = 1 - Math.pow(1 - progress, 3);
-                
-                // 根据进度计算当前该渲染几个粒子
                 let currentLimit = Math.floor(easeOutProgress * particles.length);
                 render(currentLimit);
-                
-                if(progress < 1) {
-                    animationFrameId = requestAnimationFrame(step);
-                } else {
-                    if(onComplete) onComplete();
-                }
+                if(progress < 1) animationFrameId = requestAnimationFrame(step);
+                else if(onComplete) onComplete();
             }
             requestAnimationFrame(step);
         }
 
         document.getElementById('randomBtn').onclick = () => { generateRandomParticles(); render(); };
         document.getElementById('previewAnimBtn').onclick = () => { playAnimation(); };
-        document.getElementById('downloadPngBtn').onclick = () => { if(!currentImage)return; render(); const a=document.createElement('a'); a.download=`OHH_${Date.now()}.png`; a.href=canvas.toDataURL('image/png'); a.click(); };
+        document.getElementById('downloadPngBtn').onclick = () => { if(!currentImage)return; render(); const a=document.createElement('a'); a.download=`OHH_BOX_${Date.now()}.png`; a.href=canvas.toDataURL('image/png'); a.click(); };
         
         document.getElementById('recordAnimBtn').onclick = (e) => {
             if(!currentImage) return;
@@ -371,16 +420,14 @@
                 mediaRecorder.onstop = () => {
                     const blob = new Blob(recordedChunks, { type: mimeType });
                     const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; 
-                    a.download = `OHH_Live_${Date.now()}.${mimeType.includes('mp4') ? 'mp4' : 'webm'}`; a.click(); URL.revokeObjectURL(url);
+                    a.download = `OHH_BOX_Live_${Date.now()}.${mimeType.includes('mp4') ? 'mp4' : 'webm'}`; a.click(); URL.revokeObjectURL(url);
                     btn.innerHTML = "🎥 导出动态实况视频 (MP4)"; btn.classList.replace('btn-success', 'btn-danger'); isRecording = false;
                 };
                 
                 mediaRecorder.start(); isRecording = true;
                 btn.innerHTML = "⏳ 正在录制动效中..."; btn.classList.replace('btn-danger', 'btn-success'); recordedChunks = [];
                 
-                playAnimation(() => {
-                    setTimeout(() => mediaRecorder.stop(), 500); 
-                });
+                playAnimation(() => { setTimeout(() => mediaRecorder.stop(), 500); });
             }
         };
         
