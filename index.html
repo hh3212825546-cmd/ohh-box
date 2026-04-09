@@ -3,63 +3,363 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OHH盒子 - 移动适配版 v1.6</title>
+    <title>OHH盒子 - 高阶排版与氛围生成引擎</title>
     <style>
-        :root { --bg: #f4f4f5; --panel: #ffffff; --text: #27272a; --border: #e4e4e7; --primary: #3b82f6; }
-        body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background: var(--bg); display: flex; height: 100vh; overflow: hidden; color: var(--text); flex-direction: row; }
+        /* 现代专业配色系统 */
+        :root { 
+            --bg-body: #f1f5f9; 
+            --panel-bg: #ffffff; 
+            --text-main: #0f172a; 
+            --text-sub: #64748b; 
+            --border: #e2e8f0; 
+            --primary: #0f172a; 
+            --primary-hover: #334155;
+            --accent: #3b82f6;
+            --radius: 14px;
+        }
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg-body); display: flex; height: 100vh; overflow: hidden; color: var(--text-main); flex-direction: row; }
         
-        /* 响应式：电脑端布局 */
-        .sidebar { width: 360px; background: var(--panel); padding: 24px; box-shadow: 2px 0 12px rgba(0,0,0,0.05); overflow-y: auto; display: flex; flex-direction: column; gap: 14px; z-index: 10; }
-        .preview-area { flex: 1; display: flex; align-items: center; justify-content: center; background: #e4e4e7; padding: 20px; overflow: hidden; position: relative; }
+        /* 侧边栏：隐藏系统滚动条，打造原生应用感 */
+        .sidebar { width: 380px; background: var(--panel-bg); padding: 24px; box-shadow: 2px 0 20px rgba(0,0,0,0.04); overflow-y: auto; display: flex; flex-direction: column; gap: 16px; z-index: 10; }
+        .sidebar::-webkit-scrollbar { width: 6px; }
+        .sidebar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
         
-        .brand { margin: 0; font-size: 24px; font-weight: 900; letter-spacing: 1px; color: #18181b; }
-        .brand-tag { font-size: 11px; background: #3b82f6; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 6px; }
-
-        .control-group { display: flex; flex-direction: column; gap: 6px; padding-bottom: 10px; border-bottom: 1px dashed var(--border); }
-        label { font-size: 13px; font-weight: 600; color: #52525b; display: flex; justify-content: space-between; align-items: center;}
-        select, input[type="file"], input[type="color"], input[type="text"] { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
-        input[type="range"] { width: 100%; height: 20px; accent-color: var(--primary); }
+        .preview-area { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; position: relative; }
         
-        .btn { color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: 600; text-align: center; font-size: 14px; transition: 0.2s; }
-        .btn-outline { background: transparent; color: var(--primary); border: 1px solid var(--primary); }
-        .image-tweak-panel { background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; }
+        /* 品牌标头 */
+        .header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+        .brand { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
+        .brand-tag { font-size: 11px; font-weight: 600; background: var(--primary); color: white; padding: 3px 8px; border-radius: 20px; }
 
-        canvas { display: block; max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 10px 30px rgba(0,0,0,0.15); border-radius: 8px; background: white; touch-action: none; }
+        /* 卡片式功能组 */
+        .setting-card { background: #f8fafc; padding: 16px; border-radius: var(--radius); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
+        .card-title { font-size: 14px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+        
+        /* 表单控件美化 */
+        label { font-size: 13px; font-weight: 600; color: var(--text-sub); display: flex; justify-content: space-between; align-items: center;}
+        select, input[type="text"] { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; background: white; color: var(--text-main); font-weight: 500; outline: none; transition: border-color 0.2s;}
+        select:focus, input[type="text"]:focus { border-color: var(--accent); }
+        input[type="color"] { border: 1px solid var(--border); border-radius: 8px; padding: 2px; height: 42px; cursor: pointer; background: white;}
+        input[type="range"] { width: 100%; height: 6px; background: #cbd5e1; border-radius: 4px; outline: none; -webkit-appearance: none; margin: 10px 0; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; background: var(--primary); border-radius: 50%; cursor: pointer; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+        
+        /* 文件上传按钮美化 */
+        input[type="file"] { font-size: 13px; color: var(--text-sub); }
+        input[type="file"]::file-selector-button { border: none; background: white; border: 1px solid var(--border); padding: 8px 14px; border-radius: 6px; color: var(--text-main); cursor: pointer; font-weight: 600; margin-right: 12px; transition: 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
+        input[type="file"]::file-selector-button:hover { background: #f1f5f9; }
 
-        /* 📱 响应式：手机端适配 (关键！) */
+        /* 操作按钮 */
+        .btn-group { display: flex; gap: 10px; margin-top: 4px; }
+        .btn { flex: 1; border: none; padding: 14px; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: 14px; transition: all 0.2s; display: flex; justify-content: center; align-items: center; gap: 6px; }
+        .btn:active { transform: scale(0.98); }
+        .btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2); }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-success { background: #10b981; color: white; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); }
+        .btn-secondary { background: white; color: var(--text-main); border: 1px solid var(--border); box-shadow: 0 2px 6px rgba(0,0,0,0.02); }
+        .btn-danger { background: #ef4444; color: white; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2); margin-top: 10px;}
+
+        /* 图片微调子面板 */
+        .sub-panel { background: white; padding: 12px; border-radius: 8px; border: 1px solid var(--border); margin-top: 8px;}
+
+        /* 预览画布 */
+        canvas { display: block; max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 20px 50px rgba(0,0,0,0.12); border-radius: 12px; background: white; touch-action: none; transition: transform 0.2s ease;}
+
+        /* 📱 手机端适配 */
         @media (max-width: 768px) {
             body { flex-direction: column; }
-            .sidebar { width: 100%; height: 45vh; order: 2; padding: 16px; box-sizing: border-box; box-shadow: 0 -4px 12px rgba(0,0,0,0.05); }
-            .preview-area { height: 55vh; order: 1; padding: 10px; }
-            .brand { font-size: 20px; }
+            .sidebar { width: 100%; height: 48vh; order: 2; padding: 20px; box-sizing: border-box; box-shadow: 0 -10px 20px rgba(0,0,0,0.05); border-radius: 20px 20px 0 0; }
+            .preview-area { height: 52vh; order: 1; padding: 16px; }
+            .header { justify-content: center; margin-bottom: 10px;}
         }
     </style>
 </head>
 <body>
     <div class="sidebar">
-        <div class="brand">OHH盒子<span class="brand-tag">v1.6 Mobile</span></div>
+        <div class="header">
+            <h1 class="brand">OHH盒子</h1>
+            <span class="brand-tag">v2.0 PRO</span>
+        </div>
         
-        <div class="control-group">
-            <label>1. 上传主图 <span id="imgStatus"></span></label>
+        <div class="setting-card">
+            <div class="card-title">🖼️ 核心图像</div>
+            <label>上传主图 <span id="imgStatus" style="color: #f59e0b; font-size: 12px;">等待上传</span></label>
             <input type="file" id="imageUpload" accept="image/*">
-            <div class="image-tweak-panel">
-                <label>缩放 <span id="imgScaleVal">100</span>%</label>
+            
+            <div class="sub-panel">
+                <label>主图缩放 <span id="imgScaleVal">100</span>%</label>
                 <input type="range" id="imgScale" min="50" max="300" value="100">
-                <div style="display:flex; gap:10px; margin-top:5px;">
+                <div style="display:flex; gap:16px; margin-top:8px;">
                     <div style="flex:1"><label>X偏移</label><input type="range" id="imgOffsetX" min="-400" max="400" value="0"></div>
                     <div style="flex:1"><label>Y偏移</label><input type="range" id="imgOffsetY" min="-400" max="400" value="0"></div>
                 </div>
             </div>
         </div>
 
-        <div class="control-group">
-            <label>2. 画布与排版</label>
-            <div style="display:flex; gap:8px;">
-                <select id="canvasRatio" style="flex:1;"><option value="3:4">3:4 竖</option><option value="1:1">1:1 方</option><option value="9:16">9:16 长</option></select>
-                <select id="layoutDir" style="flex:1;"><option value="top">主在上</option><option value="left">主在左</option><option value="bottom">主在下</option></select>
+        <div class="setting-card">
+            <div class="card-title">📐 排版与比例</div>
+            <div style="display:flex; gap:10px;">
+                <select id="canvasRatio" style="flex:1;">
+                    <option value="3:4">3:4 (竖向)</option>
+                    <option value="1:1">1:1 (正方)</option>
+                    <option value="4:3">4:3 (横向)</option>
+                    <option value="9:16">9:16 (全面屏)</option>
+                    <option value="16:9">16:9 (宽屏)</option>
+                </select>
+                <select id="layoutDir" style="flex:1;">
+                    <option value="top">主图在上</option>
+                    <option value="bottom">主图在下</option>
+                    <option value="left">主图在左</option>
+                    <option value="right">主图在右</option>
+                </select>
             </div>
         </div>
 
+        <div class="setting-card">
+            <div class="card-title">🎨 氛围背景</div>
+            <select id="bgType">
+                <option value="solid">纯色填充</option>
+                <option value="gradient">平滑渐变</option>
+                <option value="stripes">艺术条纹</option>
+                <option value="image">上传图片作为背景</option>
+            </select>
+            <div id="imageControls" style="display:none; margin-top:5px;"><input type="file" id="bgImageUpload" accept="image/*"></div>
+            <div class="color-row" style="display:flex; gap:10px; margin-top:5px;">
+                <input type="color" id="color1" value="#fef08a" style="flex:1;">
+                <input type="color" id="color2" value="#f97316" style="flex:1;">
+            </div>
+        </div>
+
+        <div class="setting-card">
+            <div class="card-title">✨ 粒子画笔引擎</div>
+            <div style="display:flex; gap:10px;">
+                <select id="shapeType" style="flex:2;">
+                    <option value="drop">💧 灵动雨滴</option>
+                    <option value="star">⭐ 经典星星</option>
+                    <option value="heart">❤️ 浪漫爱心</option>
+                    <option value="leaf">🍃 飘落树叶</option>
+                    <option value="text">✍️ 自定义文字</option>
+                </select>
+                <input type="text" id="customText" value="OHH" style="display:none; flex:1;" placeholder="输入文字">
+            </div>
+            
+            <label style="margin-top:8px;">形状大小 <span id="sizeVal">35</span></label>
+            <input type="range" id="sizeRange" min="15" max="100" value="35">
+            
+            <label style="margin-top:4px;">边缘羽化 <span id="featherVal">10</span></label>
+            <input type="range" id="featherRange" min="0" max="40" value="10">
+            
+            <label style="margin-top:8px; cursor:pointer; background:white; padding:10px; border-radius:8px; border:1px solid var(--border);">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <input type="checkbox" id="unifiedRotation" style="width:16px; height:16px; accent-color: var(--primary);"> 
+                    <span style="color:var(--text-main);">锁定形状方向</span>
+                </div>
+            </label>
+            <div id="angleControl" style="display:none; margin-top:4px; padding:0 10px;">
+                <label>调整统一角度 <span id="angleVal">0</span>°</label>
+                <input type="range" id="angleRange" min="0" max="360" value="0">
+            </div>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn btn-success" id="randomBtn">✨ 随机散布</button>
+            <button class="btn btn-secondary" id="clearBtn">🧹 清空</button>
+        </div>
+        <button class="btn btn-primary" id="downloadBtn" style="margin-top:10px;">📥 保存高清美图</button>
+        <button class="btn btn-danger" id="recordBtn">🔴 开启画笔录制</button>
+        <p style="font-size: 12px; color: var(--text-sub); text-align: center; margin-top:8px;">💡 在右侧画面拖拽，用手指或鼠标画出氛围粒子</p>
+    </div>
+
+    <div class="preview-area"><canvas id="mainCanvas"></canvas></div>
+
+    <script>
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        let currentImage = null, currentBgImage = null, particles = [], isDrawing = false, lastPos = {x:0, y:0};
+        let isRecording = false, mediaRecorder, recordedChunks = [];
+
+        const ui = {
+            canvasRatio: document.getElementById('canvasRatio'), layoutDir: document.getElementById('layoutDir'),
+            bgType: document.getElementById('bgType'), color1: document.getElementById('color1'), color2: document.getElementById('color2'),
+            featherRange: document.getElementById('featherRange'), shapeType: document.getElementById('shapeType'), customText: document.getElementById('customText'),
+            sizeRange: document.getElementById('sizeRange'), unifiedRotation: document.getElementById('unifiedRotation'),
+            angleRange: document.getElementById('angleRange'), angleControl: document.getElementById('angleControl'),
+            imgScale: document.getElementById('imgScale'), imgOffsetX: document.getElementById('imgOffsetX'), imgOffsetY: document.getElementById('imgOffsetY')
+        };
+
+        // 画布尺寸计算
+        function updateCanvasSize() {
+            const ratio = ui.canvasRatio.value.split(':');
+            const baseRes = 1080;
+            canvas.width = baseRes; canvas.height = Math.round((baseRes / parseInt(ratio[0])) * parseInt(ratio[1]));
+            particles = []; render();
+        }
+
+        // 通用位置获取 (支持手机触摸和电脑鼠标)
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: (clientX - rect.left) * (canvas.width / rect.width),
+                y: (clientY - rect.top) * (canvas.height / rect.height)
+            };
+        }
+
+        function startDrawing(e) { if(!currentImage) return; isDrawing = true; lastPos = getPos(e); }
+        function moveDrawing(e) {
+            if(!isDrawing) return;
+            const pos = getPos(e);
+            if (Math.hypot(pos.x - lastPos.x, pos.y - lastPos.y) > 15) {
+                const size = parseInt(ui.sizeRange.value);
+                particles.push({ x: pos.x + (Math.random()-0.5)*80, y: pos.y + (Math.random()-0.5)*80, size: size*(0.6+Math.random()*0.8), rotation: Math.random()*Math.PI*2, colorIndex: Math.random()>0.5?0:1 });
+                lastPos = pos; render();
+            }
+            if(e.touches && e.cancelable) e.preventDefault(); // 移动端防滑动
+        }
+        function endDrawing() { isDrawing = false; }
+
+        canvas.addEventListener('mousedown', startDrawing); canvas.addEventListener('mousemove', moveDrawing);
+        window.addEventListener('mouseup', endDrawing);
+        canvas.addEventListener('touchstart', startDrawing, {passive: false});
+        canvas.addEventListener('touchmove', moveDrawing, {passive: false});
+        canvas.addEventListener('touchend', endDrawing);
+
+        // UI 事件绑定
+        ui.canvasRatio.onchange = updateCanvasSize;
+        ui.bgType.onchange = (e) => { document.getElementById('imageControls').style.display = e.target.value === 'image' ? 'block' : 'none'; render(); };
+        ui.shapeType.onchange = (e) => { ui.customText.style.display = e.target.value === 'text' ? 'block' : 'none'; render(); };
+        ui.unifiedRotation.onchange = (e) => { ui.angleControl.style.display = e.target.checked ? 'block' : 'none'; render(); };
+        
+        ['layoutDir','color1','color2','customText','angleRange','imgScale','imgOffsetX','imgOffsetY', 'featherRange', 'sizeRange'].forEach(k => {
+            const el = document.getElementById(k);
+            if(el) el.oninput = el.onchange = () => {
+                if(document.getElementById(k+'Val')) document.getElementById(k+'Val').innerText = el.value;
+                render();
+            };
+        });
+
+        document.getElementById('imageUpload').onchange = (e) => {
+            const reader = new FileReader(); document.getElementById('imgStatus').innerText = "读取中..."; document.getElementById('imgStatus').style.color = "var(--primary)";
+            reader.onload = (ev) => { currentImage = new Image(); currentImage.onload = () => {document.getElementById('imgStatus').innerText = "加载成功 ✅"; document.getElementById('imgStatus').style.color = "#10b981"; render();}; currentImage.src = ev.target.result; };
+            if(e.target.files[0]) reader.readAsDataURL(e.target.files[0]);
+        };
+        document.getElementById('bgImageUpload').onchange = (e) => {
+            const reader = new FileReader();
+            reader.onload = (ev) => { currentBgImage = new Image(); currentBgImage.onload = render; currentBgImage.src = ev.target.result; };
+            if(e.target.files[0]) reader.readAsDataURL(e.target.files[0]);
+        };
+
+        // 形状绘制
+        function drawShape(ctx, type, size) {
+            if (type === 'text') { ctx.font = `bold ${size}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(ui.customText.value || 'OHH', 0, 0); return false; }
+            ctx.beginPath();
+            if (type === 'circle') ctx.arc(0,0, size/2, 0, Math.PI*2);
+            else if (type === 'star') { for(let i=0;i<10;i++){ let r = i%2==0?size/2:size/4; let a = i*Math.PI/5 - Math.PI/2; ctx.lineTo(Math.cos(a)*r, Math.sin(a)*r); } }
+            else if (type === 'drop') { ctx.moveTo(0,-size/2); ctx.quadraticCurveTo(size/3,0,size/3,size/4); ctx.arc(0,size/4,size/3,0,Math.PI); ctx.quadraticCurveTo(-size/3,0,0,-size/2); }
+            else if (type === 'heart') { ctx.moveTo(0,size/4); ctx.bezierCurveTo(size/2,-size/4,size/2,-size/1.5,0,-size/3); ctx.bezierCurveTo(-size/2,-size/1.5,-size/2,-size/4,0,size/4); }
+            else if (type === 'leaf') { ctx.moveTo(0,-size/2); ctx.quadraticCurveTo(size/2,0,0,size/2); ctx.quadraticCurveTo(-size/2,0,0,-size/2); }
+            ctx.closePath(); return true;
+        }
+
+        // 核心渲染引擎
+        function render() {
+            if(!currentImage) return;
+            ctx.clearRect(0,0, canvas.width, canvas.height);
+            const layout = ui.layoutDir.value;
+            let imgR = {x:0, y:0, w:canvas.width, h:canvas.height}, bgR = {x:0, y:0, w:canvas.width, h:canvas.height};
+            
+            // 排版计算分配
+            if(layout==='top'){ imgR.h/=2; bgR.y=canvas.height/2; bgR.h=canvas.height/2; }
+            else if(layout==='bottom'){ bgR.h/=2; imgR.y=canvas.height/2; imgR.h=canvas.height/2; }
+            else if(layout==='left'){ imgR.w/=2; bgR.x=canvas.width/2; bgR.w=canvas.width/2; }
+            else if(layout==='right'){ bgR.w/=2; imgR.x=canvas.width/2; imgR.w=canvas.width/2; }
+
+            // 1. 底层背景全铺满
+            if(ui.bgType.value==='image' && currentBgImage){
+                let s = Math.max(canvas.width/currentBgImage.width, canvas.height/currentBgImage.height);
+                ctx.drawImage(currentBgImage, (canvas.width-currentBgImage.width*s)/2, (canvas.height-currentBgImage.height*s)/2, currentBgImage.width*s, currentBgImage.height*s);
+            } else {
+                let g = ctx.createLinearGradient(0,0,canvas.width,canvas.height); g.addColorStop(0,ui.color1.value); g.addColorStop(1,ui.color2.value);
+                ctx.fillStyle = ui.bgType.value==='gradient'?g:ui.color1.value; ctx.fillRect(0,0,canvas.width,canvas.height);
+                if(ui.bgType.value==='stripes'){ ctx.fillStyle=ui.color2.value; for(let i=0;i<canvas.width+canvas.height;i+=60)ctx.fillRect(i,0,30,canvas.height); }
+            }
+
+            // 2. 主图与挖洞
+            const imgCanvas = document.createElement('canvas'); imgCanvas.width=canvas.width; imgCanvas.height=canvas.height;
+            const iCtx = imgCanvas.getContext('2d');
+            const scale = parseInt(ui.imgScale.value)/100, ox=parseInt(ui.imgOffsetX.value), oy=parseInt(ui.imgOffsetY.value);
+            const s = Math.max(imgR.w/currentImage.width, imgR.h/currentImage.height)*scale;
+            const dx = imgR.x+(imgR.w-currentImage.width*s)/2+ox, dy = imgR.y+(imgR.h-currentImage.height*s)/2+oy;
+            
+            iCtx.save(); iCtx.beginPath(); iCtx.rect(imgR.x, imgR.y, imgR.w, imgR.h); iCtx.clip();
+            iCtx.drawImage(currentImage, dx, dy, currentImage.width*s, currentImage.height*s); iCtx.restore();
+
+            const rot = ui.unifiedRotation.checked ? ui.angleRange.value*Math.PI/180 : null;
+            const feather = parseInt(ui.featherRange.value);
+            const isStripe = ui.bgType.value === 'stripes';
+
+            iCtx.globalCompositeOperation = isStripe ? 'source-over' : 'destination-out';
+            
+            particles.forEach(p => {
+                if(p.x>imgR.x && p.x<imgR.x+imgR.w && p.y>imgR.y && p.y<imgR.y+imgR.h){
+                    iCtx.save(); iCtx.translate(p.x, p.y); iCtx.rotate(rot??p.rotation);
+                    if(isStripe) iCtx.fillStyle = p.colorIndex === 0 ? ui.color1.value : ui.color2.value;
+                    else { iCtx.fillStyle = 'black'; if(feather>0){ iCtx.shadowColor='black'; iCtx.shadowBlur=feather; } }
+                    
+                    if(drawShape(iCtx, ui.shapeType.value, p.size)) iCtx.fill(); 
+                    iCtx.restore();
+                }
+            });
+            ctx.drawImage(imgCanvas, 0, 0);
+
+            // 3. 将碎片贴到背景
+            particles.forEach(p => {
+                if(p.x>bgR.x && p.x<bgR.x+bgR.w && p.y>bgR.y && p.y<bgR.y+bgR.h){
+                    const fCanvas = document.createElement('canvas'); fCanvas.width=p.size*2+feather; fCanvas.height=p.size*2+feather;
+                    const fCtx = fCanvas.getContext('2d'); 
+                    fCtx.translate(p.size+feather/2, p.size+feather/2); fCtx.rotate(rot??p.rotation);
+                    fCtx.fillStyle='black'; if(feather>0){ fCtx.shadowColor='black'; fCtx.shadowBlur=feather; }
+                    if(drawShape(fCtx, ui.shapeType.value, p.size)) fCtx.fill();
+                    
+                    fCtx.globalCompositeOperation='source-in'; fCtx.shadowColor='transparent';
+                    
+                    // 核心映射计算
+                    let sx = p.x, sy = p.y; 
+                    if(layout==='top') sy-=imgR.h; else if(layout==='bottom') sy+=imgR.h; else if(layout==='left') sx-=imgR.w; else if(layout==='right') sx+=imgR.w;
+                    
+                    fCtx.drawImage(currentImage, dx-sx+p.size+feather/2, dy-sy+p.size+feather/2, currentImage.width*s, currentImage.height*s);
+                    ctx.drawImage(fCanvas, p.x-p.size-feather/2, p.y-p.size-feather/2);
+                }
+            });
+        }
+
+        // 按钮事件
+        document.getElementById('randomBtn').onclick = () => { for(let i=0;i<30;i++) particles.push({x:Math.random()*canvas.width, y:Math.random()*canvas.height, size:parseInt(ui.sizeRange.value)*(0.5+Math.random()), rotation:Math.random()*Math.PI*2, colorIndex:Math.random()>0.5?0:1}); render(); };
+        document.getElementById('clearBtn').onclick = () => { particles=[]; render(); };
+        document.getElementById('downloadBtn').onclick = () => { if(!currentImage)return; const a=document.createElement('a'); a.download=`OHH_PRO_${Date.now()}.png`; a.href=canvas.toDataURL('image/png'); a.click(); };
+        
+        document.getElementById('recordBtn').onclick = (e) => {
+            if(!currentImage) return;
+            if (!isRecording) {
+                const stream = canvas.captureStream(30); 
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+                mediaRecorder.ondataavailable = ev => { if (ev.data.size > 0) recordedChunks.push(ev.data); };
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `OHH_Live_${Date.now()}.webm`; a.click(); URL.revokeObjectURL(url);
+                };
+                mediaRecorder.start(); isRecording = true;
+                e.target.innerHTML = "⏹️ 停止录制并保存"; e.target.classList.replace('btn-danger', 'btn-success'); recordedChunks = [];
+            } else {
+                mediaRecorder.stop(); isRecording = false;
+                e.target.innerHTML = "🔴 开启画笔录制"; e.target.classList.replace('btn-success', 'btn-danger');
+            }
+        };
+        
+        updateCanvasSize();
+    </script>
+</body>
+</html>
         <div class="control-group">
             <label>3. 背景样式</label>
             <select id="bgType">
