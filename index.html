@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>OHH盒子 - 高阶排版与氛围生成引擎</title>
+    <style>
+        :root { --bg: #f4f4f5; --panel: #ffffff; --text: #27272a; --border: #e4e4e7; --primary: #3b82f6; }
+        body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); display: flex; height: 100vh; overflow: hidden; color: var(--text); }
+        .sidebar { width: 360px; background: var(--panel); padding: 24px; box-shadow: 2px 0 12px rgba(0,0,0,0.05); overflow-y: auto; display: flex; flex-direction: column; gap: 14px; z-index: 10; }
+        
+        .brand { margin: 0 0 5px 0; font-size: 24px; font-weight: 900; letter-spacing: 1px; color: #18181b; }
+        .brand-tag { font-size: 12px; font-weight: normal; background: #18181b; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 6px; vertical-align: middle;}
+        
+        .control-group { display: flex; flex-direction: column; gap: 6px; padding-bottom: 10px; border-bottom: 1px dashed var(--border); }
+        label { font-size: 13px; font-weight: 600; color: #52525b; display: flex; justify-content: space-between;}
+        select, input[type="file"], input[type="color"], input[type="text"] { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; box-sizing: border-box;}
+        input[type="range"] { width: 100%; accent-color: var(--primary); }
+        .btn { color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: 600; text-align: center; margin-top: 4px; transition: 0.2s; }
+        .btn:hover { opacity: 0.85; }
+        .btn-outline { background: transparent; color: var(--primary); border: 1px solid var(--primary); }
+        .color-row { display: flex; gap: 10px; }
+        
+        /* 图片微调专属面板样式 */
+        .image-tweak-panel { background: #f8fafc; padding: 10px; border-radius: 6px; margin-top: 8px; border: 1px solid #e2e8f0; }
+        .image-tweak-panel label { font-size: 12px; color: #64748b; margin-bottom: 4px; }
+        
+        .preview-area { flex: 1; display: flex; align-items: center; justify-content: center; background: #e4e4e7; padding: 30px; overflow: hidden; }
+        canvas { 
+            display: block; max-width: 100%; max-height: 100%; object-fit: contain; 
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1); border-radius: 8px; cursor: crosshair; background: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="brand">OHH盒子<span class="brand-tag">v1.5</span></div>
+        
+        <div class="control-group">
+            <label>1. 上传主图 <span id="imgStatus" style="color:#f59e0b; font-weight:normal;"></span></label>
+            <input type="file" id="imageUpload" accept="image/*">
+            
+            <div class="image-tweak-panel">
+                <label style="color:#0f172a; font-weight:bold; margin-bottom: 8px;">🖼️ 主图微调</label>
+                <label>缩放比例 <span id="imgScaleVal">100</span>%</label>
+                <input type="range" id="imgScale" min="50" max="300" value="100">
+                <label style="margin-top:4px;">X轴偏移 (左右) <span id="imgOffsetXVal">0</span></label>
+                <input type="range" id="imgOffsetX" min="-500" max="500" value="0">
+                <label style="margin-top:4px;">Y轴偏移 (上下) <span id="imgOffsetYVal">0</span></label>
+                <input type="range" id="imgOffsetY" min="-500" max="500" value="0">
+                <button class="btn btn-outline" id="resetImgBtn" style="width:100%; padding:6px; font-size:12px; margin-top:8px;">恢复默认位置</button>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>2. 画布比例与排版</label>
+            <div style="display:flex; gap:8px;">
+                <select id="canvasRatio" style="flex:1;">
+                    <option value="3:4">3:4 (竖图)</option>
+                    <option value="1:1">1:1 (正方)</option>
+                    <option value="4:3">4:3 (横图)</option>
+                    <option value="9:16">9:16 (全面屏)</option>
+                </select>
+                <select id="layoutDir" style="flex:1;">
+                    <option value="top">主在上</option>
+                    <option value="bottom">主在下</option>
+                    <option value="left">主在左</option>
+                    <option value="right">主在右</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>3. 背景层来源</label>
+            <select id="bgSource">
+                <option value="generator">🎨 颜色/条纹生成器</option>
+                <option value="image">🖼️ 上传第二张图片</option>
+            </select>
+            
+            <div id="generatorControls" style="margin-top: 5px;">
+                <select id="bgType">
+                    <option value="solid">纯色</option>
+                    <option value="gradient">渐变色</option>
+                    <option value="stripes">纯色条纹 (条纹模式下不透底)</option>
+                </select>
+                <select id="bgDirection" style="margin-top: 5px;">
+                    <option value="horizontal">↔️ 横向方向</option>
+                    <option value="vertical">↕️ 纵向方向</option>
+                    <option value="diagonal">↘️ 对角线方向 (仅渐变有效)</option>
+                </select>
+                <div class="color-row" style="margin-top: 5px;">
+                    <input type="color" id="color1" value="#FEF08A">
+                    <input type="color" id="color2" value="#F97316">
+                </div>
+            </div>
+            
+            <div id="imageControls" style="display:none; margin-top: 5px;">
+                <input type="file" id="bgImageUpload" accept="image/*">
+                <span id="bgImgStatus" style="font-size:11px; color:#f59e0b;"></span>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>4. 边缘羽化程度 <span id="featherVal">10</span></label>
+            <input type="range" id="featherRange" min="0" max="40" value="10">
+        </div>
+
+        <div class="control-group">
+            <label>5. 粒子形状库: </label>
+            <select id="shapeType" style="margin-bottom: 5px;">
+                <option value="star">⭐ 星星 (Star)</option>
+                <option value="drop">💧 雨滴 (Drop)</option>
+                <option value="heart">❤️ 爱心 (Heart)</option>
+                <option value="leaf">🍃 树叶 (Leaf)</option>
+                <option value="moon">🌙 月牙 (Moon)</option>
+                <option value="circle">⏺️ 圆点 (Circle)</option>
+                <option value="square">⏹️ 正方形 (Square)</option>
+                <option value="diamond">♦️ 菱形 (Diamond)</option>
+                <option value="text">✍️ 自定义文字 / Emoji</option>
+            </select>
+            <input type="text" id="customText" value="OHH" style="display:none; text-align:center; font-weight:bold;" placeholder="输入短文字或Emoji">
+            
+            <label style="margin-top:8px;">画笔发散范围 <span id="scatterVal">40</span></label>
+            <input type="range" id="scatter" min="0" max="150" value="40">
+            <label>形状基础大小 <span id="sizeVal">35</span></label>
+            <input type="range" id="sizeRange" min="15" max="150" value="35">
+            
+            <label style="margin-top:12px; display:flex; align-items:center; cursor:pointer;">
+                <input type="checkbox" id="unifiedRotation" style="width:auto; margin-right:8px; accent-color: var(--primary);"> 
+                开启统一形状朝向
+            </label>
+            <div id="angleControl" style="display:none; margin-top: 6px; background: #f8fafc; padding: 8px; border-radius: 6px;">
+                <label>统一旋转角度 <span id="angleVal">0</span>°</label>
+                <input type="range" id="angleRange" min="0" max="360" value="0">
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+            <button class="btn" id="randomBtn" style="background: #10b981; flex: 1;">✨ 随机散布</button>
+            <button class="btn" id="clearBtn" style="background: #64748b; flex: 1;">🧹 清空轨迹</button>
+        </div>
+        
+        <button class="btn btn-outline" id="downloadBtn" style="margin-top: 10px;">📥 导出静态图</button>
+        <button class="btn" id="recordBtn" style="background: #ef4444; margin-top: 10px;">🔴 开启轨迹录制</button>
+    </div>
+
+    <div class="preview-area">
+        <canvas id="mainCanvas"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let currentImage = null;
+        let currentBgImage = null; 
+        let particles = [];
+        let isDrawing = false;
+        let lastPos = {x:0, y:0};
+
+        let isRecording = false;
+        let mediaRecorder;
+        let recordedChunks = [];
+
+        const ui = {
+            canvasRatio: document.getElementById('canvasRatio'),
+            layoutDir: document.getElementById('layoutDir'),
+            bgSource: document.getElementById('bgSource'),
+            generatorControls: document.getElementById('generatorControls'),
+            imageControls: document.getElementById('imageControls'),
+            bgType: document.getElementById('bgType'),
+            bgDirection: document.getElementById('bgDirection'),
+            color1: document.getElementById('color1'),
+            color2: document.getElementById('color2'),
+            featherRange: document.getElementById('featherRange'),
+            shapeType: document.getElementById('shapeType'),
+            customText: document.getElementById('customText'),
+            scatter: document.getElementById('scatter'),
+            sizeRange: document.getElementById('sizeRange'),
+            unifiedRotation: document.getElementById('unifiedRotation'),
+            angleControl: document.getElementById('angleControl'),
+            angleRange: document.getElementById('angleRange'),
+            // 新增：图片微调相关
+            imgScale: document.getElementById('imgScale'),
+            imgOffsetX: document.getElementById('imgOffsetX'),
+            imgOffsetY: document.getElementById('imgOffsetY')
+        };
+
+        function updateCanvasSize() {
+            const ratio = ui.canvasRatio.value.split(':');
+            const w = parseInt(ratio[0]); const h = parseInt(ratio[1]);
+            const baseRes = 1080; 
+            if (w > h) { canvas.width = baseRes; canvas.height = Math.round((baseRes / w) * h); } 
+            else { canvas.height = baseRes; canvas.width = Math.round((baseRes / h) * w); }
+            particles = []; render();
+        }
+
+        ui.canvasRatio.addEventListener('change', updateCanvasSize);
+        ui.bgSource.addEventListener('change', (e) => {
+            ui.generatorControls.style.display = e.target.value === 'generator' ? 'block' : 'none';
+            ui.imageControls.style.display = e.target.value === 'image' ? 'block' : 'none';
+            render();
+        });
+        ui.shapeType.addEventListener('change', (e) => {
+            ui.customText.style.display = e.target.value === 'text' ? 'block' : 'none';
+            render();
+        });
+        ui.unifiedRotation.addEventListener('change', (e) => {
+            ui.angleControl.style.display = e.target.checked ? 'block' : 'none';
+            render();
+        });
+        
+        ['layoutDir', 'bgType', 'bgDirection', 'color1', 'color2', 'customText'].forEach(k => {
+            ui[k].addEventListener('change', render);
+        });
+        
+        // 绑定所有滑动条事件
+        ['featherRange', 'scatter', 'sizeRange', 'angleRange', 'imgScale', 'imgOffsetX', 'imgOffsetY'].forEach(k => {
+            ui[k].addEventListener('input', e => {
+                document.getElementById(k+'Val').innerText = e.target.value;
+                if(k !== 'scatter' && k !== 'sizeRange') render(); // 只有发散度和大小不触发即时重绘(画笔属性)
+            });
+        });
+
+        // 恢复默认图片位置按钮
+        document.getElementById('resetImgBtn').addEventListener('click', () => {
+            ui.imgScale.value = 100; document.getElementById('imgScaleVal').innerText = 100;
+            ui.imgOffsetX.value = 0; document.getElementById('imgOffsetXVal').innerText = 0;
+            ui.imgOffsetY.value = 0; document.getElementById('imgOffsetYVal').innerText = 0;
+            render();
+        });
+
+        document.getElementById('imageUpload').addEventListener('change', (e) => {
+            if (!e.target.files[0]) return;
+            const reader = new FileReader();
+            document.getElementById('imgStatus').innerText = "读取中...";
+            reader.onload = (ev) => {
+                const img = new Image();
+                img.onload = () => { currentImage = img; document.getElementById('imgStatus').innerText = "成功"; render(); };
+                img.src = ev.target.result;
+            }
+            reader.readAsDataURL(e.target.files[0]);
+        });
+
+        document.getElementById('bgImageUpload').addEventListener('change', (e) => {
+            if (!e.target.files[0]) return;
+            const reader = new FileReader();
+            document.getElementById('bgImgStatus').innerText = "读取中...";
+            reader.onload = (ev) => {
+                const img = new Image();
+                img.onload = () => { currentBgImage = img; document.getElementById('bgImgStatus').innerText = "背景已加载"; render(); };
+                img.src = ev.target.result;
+            }
+            reader.readAsDataURL(e.target.files[0]);
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', () => { particles = []; render(); });
+        document.getElementById('randomBtn').addEventListener('click', () => {
+            if(!currentImage) return;
+            const size = parseInt(ui.sizeRange.value);
+            for (let i = 0; i < 30; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+                    size: size * (0.6 + Math.random() * 0.8), rotation: Math.random() * Math.PI * 2,
+                    colorIndex: Math.random() > 0.5 ? 0 : 1 
+                });
+            }
+            render();
+        });
+
+        document.getElementById('downloadBtn').addEventListener('click', () => {
+            if(!currentImage) return;
+            const link = document.createElement('a'); link.download = `OHH_${Date.now()}.png`; 
+            link.href = canvas.toDataURL('image/png'); link.click();
+        });
+
+        document.getElementById('recordBtn').addEventListener('click', (e) => {
+            if(!currentImage) return;
+            if (!isRecording) {
+                const stream = canvas.captureStream(30); 
+                const mimeType = MediaRecorder.isTypeSupported('video/webm; codecs=vp9') ? 'video/webm; codecs=vp9' : 'video/webm';
+                mediaRecorder = new MediaRecorder(stream, { mimeType: mimeType });
+                mediaRecorder.ondataavailable = ev => { if (ev.data.size > 0) recordedChunks.push(ev.data); };
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: mimeType });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a'); a.href = url; a.download = `OHH_Live_${Date.now()}.webm`; a.click();
+                    URL.revokeObjectURL(url);
+                };
+                mediaRecorder.start(); isRecording = true;
+                e.target.innerText = "⏹️ 停止录制"; e.target.style.background = "#10b981"; recordedChunks = [];
+            } else {
+                mediaRecorder.stop(); isRecording = false;
+                e.target.innerText = "🔴 开启轨迹录制"; e.target.style.background = "#ef4444";
+            }
+        });
+
+        function getCanvasPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            return { x: (e.clientX - rect.left) * (canvas.width / rect.width), y: (e.clientY - rect.top) * (canvas.height / rect.height) };
+        }
+        canvas.addEventListener('mousedown', (e) => { if(!currentImage) return; isDrawing = true; lastPos = getCanvasPos(e); });
+        canvas.addEventListener('mousemove', (e) => {
+            if(!isDrawing) return;
+            const currentPos = getCanvasPos(e);
+            if (Math.hypot(currentPos.x - lastPos.x, currentPos.y - lastPos.y) > 15) { 
+                const scatter = parseInt(ui.scatter.value); const size = parseInt(ui.sizeRange.value);
+                const spawnCount = Math.floor(Math.random() * 2) + 1; 
+                for(let i=0; i<spawnCount; i++){
+                    particles.push({
+                        x: currentPos.x + (Math.random() - 0.5) * scatter * 2, y: currentPos.y + (Math.random() - 0.5) * scatter * 2,
+                        size: size * (0.6 + Math.random() * 0.8), rotation: Math.random() * Math.PI * 2,
+                        colorIndex: Math.random() > 0.5 ? 0 : 1 
+                    });
+                }
+                lastPos = currentPos; render(); 
+            }
+        });
+        canvas.addEventListener('mouseup', () => { isDrawing = false; });
+        canvas.addEventListener('mouseleave', () => { isDrawing = false; });
+
+        function drawShape(ctx, type, size) {
+            if (type === 'text') {
+                ctx.font = `bold ${size}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(ui.customText.value || 'OHH', 0, 0); return false;
+            }
+            ctx.beginPath();
+            if (type === 'circle') { ctx.arc(0,0, size/2, 0, Math.PI*2); } 
+            else if (type === 'star') {
+                const spikes = 5; const outR = size/2; const inR = size/4; let rot = Math.PI/2*3; let step = Math.PI/spikes;
+                ctx.moveTo(0, -outR);
+                for(let i=0;i<spikes;i++){ ctx.lineTo(Math.cos(rot)*outR, Math.sin(rot)*outR); rot+=step; ctx.lineTo(Math.cos(rot)*inR, Math.sin(rot)*inR); rot+=step; }
+            } 
+            else if (type === 'drop') {
+                const r = size/2.5; ctx.moveTo(0, -size/2); ctx.quadraticCurveTo(r, 0, r, size/4); ctx.arc(0, size/4, r, 0, Math.PI); ctx.quadraticCurveTo(-r, 0, 0, -size/2);
+            }
+            else if (type === 'heart') {
+                ctx.moveTo(0, size/4); ctx.bezierCurveTo(size/2, -size/4, size/2, -size/1.5, 0, -size/3); ctx.bezierCurveTo(-size/2, -size/1.5, -size/2, -size/4, 0, size/4);
+            }
+            else if (type === 'leaf') {
+                ctx.moveTo(0, -size/2); ctx.quadraticCurveTo(size/2, 0, 0, size/2); ctx.quadraticCurveTo(-size/2, 0, 0, -size/2);
+            }
+            else if (type === 'moon') {
+                ctx.arc(0, 0, size/2, Math.PI * 0.5, Math.PI * 1.5, false); ctx.arc(size/6, 0, size/2.5, Math.PI * 1.5, Math.PI * 0.5, true);
+            }
+            else if (type === 'square') { ctx.rect(-size/2, -size/2, size, size); }
+            else if (type === 'diamond') { ctx.moveTo(0, -size/2); ctx.lineTo(size/2, 0); ctx.lineTo(0, size/2); ctx.lineTo(-size/2, 0); }
+            ctx.closePath();
+            return true;
+        }
+
+        function render() {
+            if(!currentImage) {
+                ctx.fillStyle = '#f4f4f5'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#a1a1aa'; ctx.font = '20px sans-serif'; ctx.textAlign = 'center';
+                ctx.fillText('请先上传主图', canvas.width/2, canvas.height/2); return;
+            }
+            ctx.clearRect(0,0, canvas.width, canvas.height);
+
+            const layout = ui.layoutDir.value;
+            let imgRect = {x:0, y:0, w:canvas.width, h:canvas.height};
+            let bgRect = {x:0, y:0, w:canvas.width, h:canvas.height};
+            if(layout === 'top') { imgRect.h /= 2; bgRect.y = bgRect.h = canvas.height/2; }
+            if(layout === 'bottom') { bgRect.h /= 2; imgRect.y = imgRect.h = canvas.height/2; }
+            if(layout === 'left') { imgRect.w /= 2; bgRect.x = bgRect.w = canvas.width/2; }
+            if(layout === 'right') { bgRect.w /= 2; imgRect.x = imgRect.w = canvas.width/2; }
+
+            // 1. 底层背景
+            if (ui.bgSource.value === 'image') {
+                if (currentBgImage) {
+                    const aspect = currentBgImage.width / currentBgImage.height; 
+                    const tAspect = canvas.width / canvas.height;
+                    let dw, dh, dx, dy;
+                    if(aspect > tAspect) { dh = canvas.height; dw = dh * aspect; dx = -(dw - canvas.width)/2; dy = 0; } 
+                    else { dw = canvas.width; dh = dw / aspect; dx = 0; dy = -(dh - canvas.height)/2; }
+                    ctx.drawImage(currentBgImage, dx, dy, dw, dh); 
+                } else {
+                    ctx.fillStyle = '#e4e4e7'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                }
+            } else {
+                const type = ui.bgType.value; const dir = ui.bgDirection.value; const c1 = ui.color1.value; const c2 = ui.color2.value;
+                if (type === 'solid') { ctx.fillStyle = c1; ctx.fillRect(0, 0, canvas.width, canvas.height); } 
+                else if (type === 'gradient') {
+                    let x2 = 0, y2 = 0; 
+                    if (dir === 'horizontal') x2 = canvas.width; 
+                    else if (dir === 'vertical') y2 = canvas.height;
+                    else if (dir === 'diagonal') { x2 = canvas.width; y2 = canvas.height; }
+                    const grad = ctx.createLinearGradient(0, 0, x2, y2); 
+                    grad.addColorStop(0, c1); grad.addColorStop(1, c2); 
+                    ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                } 
+                else if (type === 'stripes') {
+                    ctx.fillStyle = c1; ctx.fillRect(0, 0, canvas.width, canvas.height); 
+                    ctx.fillStyle = c2;
+                    if (dir === 'horizontal') { for(let i = 0; i < canvas.height; i += 40) { ctx.fillRect(0, i, canvas.width, 20); } } 
+                    else { for(let i = 0; i < canvas.width; i += 40) { ctx.fillRect(i, 0, 20, canvas.height); } }
+                }
+            }
+
+            // 2. 渲染主图与挖洞 
+            const imgCanvas = document.createElement('canvas'); imgCanvas.width = canvas.width; imgCanvas.height = canvas.height;
+            const imgCtx = imgCanvas.getContext('2d');
+            
+            // --- 核心更新：加入主图缩放与平移控制 ---
+            const scaleFactor = parseInt(ui.imgScale.value) / 100;
+            const offX = parseInt(ui.imgOffsetX.value);
+            const offY = parseInt(ui.imgOffsetY.value);
+            
+            const aspect = currentImage.width / currentImage.height; 
+            const tAspect = imgRect.w / imgRect.h;
+            let baseDw, baseDh;
+            
+            // 先计算刚好铺满(Cover)的基础尺寸
+            if(aspect > tAspect) { baseDh = imgRect.h; baseDw = baseDh * aspect; } 
+            else { baseDw = imgRect.w; baseDh = baseDw / aspect; }
+            
+            // 应用用户的缩放倍率
+            let dw = baseDw * scaleFactor;
+            let dh = baseDh * scaleFactor;
+            
+            // 计算居中位置并叠加上用户的偏移量
+            let dx = imgRect.x + (imgRect.w - dw) / 2 + offX;
+            let dy = imgRect.y + (imgRect.h - dh) / 2 + offY;
+            // ----------------------------------------
+
+            imgCtx.save(); imgCtx.beginPath(); imgCtx.rect(imgRect.x, imgRect.y, imgRect.w, imgRect.h); imgCtx.clip();
+            imgCtx.drawImage(currentImage, dx, dy, dw, dh); imgCtx.restore();
+
+            const feather = parseInt(ui.featherRange.value);
+            const useStripeFix = (ui.bgSource.value === 'generator' && ui.bgType.value === 'stripes');
+
+            particles.forEach(p => {
+                if(p.x > imgRect.x && p.x < imgRect.x+imgRect.w && p.y > imgRect.y && p.y < imgRect.y+imgRect.h) {
+                    imgCtx.save(); imgCtx.translate(p.x, p.y); 
+                    
+                    const currentRot = ui.unifiedRotation.checked ? (parseInt(ui.angleRange.value) * Math.PI / 180) : p.rotation;
+                    imgCtx.rotate(currentRot);
+                    
+                    if (useStripeFix) {
+                        imgCtx.globalCompositeOperation = 'source-over';
+                        imgCtx.fillStyle = p.colorIndex === 0 ? ui.color1.value : ui.color2.value;
+                        if(drawShape(imgCtx, ui.shapeType.value, p.size)) imgCtx.fill(); 
+                        else { 
+                            imgCtx.font = `bold ${p.size}px sans-serif`; imgCtx.textAlign = 'center'; imgCtx.textBaseline = 'middle';
+                            imgCtx.fillText(ui.customText.value || 'OHH', 0, 0);
+                        }
+                    } else {
+                        imgCtx.globalCompositeOperation = 'destination-out';
+                        imgCtx.fillStyle = 'black'; 
+                        if (feather > 0) { imgCtx.shadowColor = 'black'; imgCtx.shadowBlur = feather; }
+                        if(drawShape(imgCtx, ui.shapeType.value, p.size)) imgCtx.fill(); 
+                    }
+                    imgCtx.restore();
+                }
+            });
+            ctx.drawImage(imgCanvas, 0, 0);
+
+            // 3. 碎片映射贴图
+            particles.forEach(p => {
+                if(p.x > bgRect.x && p.x < bgRect.x+bgRect.w && p.y > bgRect.y && p.y < bgRect.y+bgRect.h) {
+                    const pad = p.size * 2 + feather;
+                    const fCanvas = document.createElement('canvas'); fCanvas.width = pad*2; fCanvas.height = pad*2;
+                    const fCtx = fCanvas.getContext('2d');
+                    
+                    const currentRot = ui.unifiedRotation.checked ? (parseInt(ui.angleRange.value) * Math.PI / 180) : p.rotation;
+                    fCtx.translate(pad, pad); fCtx.rotate(currentRot); fCtx.fillStyle = 'black';
+                    
+                    if (feather > 0) { fCtx.shadowColor = 'black'; fCtx.shadowBlur = feather; }
+                    if(drawShape(fCtx, ui.shapeType.value, p.size)) fCtx.fill();
+                    fCtx.rotate(-currentRot); fCtx.translate(-pad, -pad);
+
+                    let sourceX = p.x; let sourceY = p.y;
+                    if(layout === 'top') sourceY -= imgRect.h; if(layout === 'bottom') sourceY += imgRect.h;
+                    if(layout === 'left') sourceX -= imgRect.w; if(layout === 'right') sourceX += imgRect.w;
+
+                    fCtx.globalCompositeOperation = 'source-in'; fCtx.shadowColor = 'transparent'; 
+                    // 完美继承缩放与偏移映射
+                    fCtx.drawImage(currentImage, dx - sourceX + pad, dy - sourceY + pad, dw, dh);
+                    ctx.drawImage(fCanvas, p.x - pad, p.y - pad);
+                }
+            });
+        }
+        updateCanvasSize();
+    </script>
+</body>
+</html>
