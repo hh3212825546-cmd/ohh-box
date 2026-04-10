@@ -56,9 +56,53 @@ document.getElementById('pickColor').onclick = () => {
 
 // --- 🎭 预设系统 ---
 const PRESETS = {
-    matrix: { split: 0, colors: ['#00ff41','#003b00','#000000'], txt: 'SYSTEM FAILURE', size: 80, x: 50, y: 50 },
-    cyber: { split: 15, colors: ['#ff00ff','#00ffff','#ffff00'], txt: 'CYBERPUNK', size: 100, x: 50, y: 80 },
-    magazine: { split: 0, colors: ['#ffffff','#000000'], txt: 'VOGUE', size: 180, x: 50, y: 90 }
+    // 1. 黑客帝国 (Matrix) - 经典数字雨风格
+    matrix: { 
+        split: 2, 
+        colors: ['#00FF41', '#003B00', '#000000', '#0D0208'], 
+        txt: 'SYSTEM FAILURE', size: 80, x: 50, y: 50, 
+        scan: 85, drift: true 
+    },
+    
+    // 2. 赛博夜之城 (Night City) - 霓虹撞色
+    cyber: { 
+        split: 15, 
+        colors: ['#FF00FF', '#00FFFF', '#FFFF00', '#0000FF'], 
+        txt: 'NEON DREAMS', size: 90, x: 50, y: 80, 
+        scan: 30, drift: true 
+    },
+    
+    // 3. VOGUE杂志 (Magazine) - 极简白背景大字报
+    magazine: { 
+        split: 0, 
+        colors: ['#FFFFFF', '#000000', '#F1F5F9'], 
+        txt: 'VOGUE', size: 180, x: 50, y: 90, 
+        scan: 0, drift: false 
+    },
+    
+    // 4. 复古录像带 (VHS Retro) - 怀旧、损坏的磁带感
+    vhs: { 
+        split: 12, 
+        colors: ['#FFFFFF', '#999999', '#000000', '#FF0000'], 
+        txt: 'PLAY ▶ 00:00:24', size: 55, x: 25, y: 15, 
+        scan: 50, drift: true 
+    },
+    
+    // 5. 浪漫多巴胺 (Candy Pop) - 梦幻、甜腻的色彩
+    candy: { 
+        split: 6, 
+        colors: ['#FFB7B2', '#FFDAC1', '#E2F0CB', '#B5EAD7', '#C7CEEA'], 
+        txt: 'SWEET PEACH', size: 100, x: 50, y: 50, 
+        scan: 10, drift: false 
+    },
+    
+    // 6. 冷调电影 (Nordic Noir) - 压抑、高级的北欧色调
+    nordic: { 
+        split: 3, 
+        colors: ['#2C3E50', '#34495E', '#BDC3C7', '#7F8C8D'], 
+        txt: 'WINTER SOLITUDE', size: 70, x: 10, y: 90, 
+        scan: 20, drift: true 
+    }
 };
 
 window.applyPreset = (name) => {
