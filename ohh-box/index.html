@@ -127,7 +127,13 @@
             </div>
         </div>
     </div>
-    <div class="preview-area"><canvas id="mainCanvas"></canvas></div>
+  </div> <div class="preview-area"><canvas id="mainCanvas"></canvas></div>
+
+    <div id="wechat-preview-mask">
+        <p class="wechat-tip">✨ 生成成功！<br>请长按下方图片保存至相册</p>
+        <img id="wechat-preview-img" src="" alt="预览图">
+        <div class="close-mask" onclick="document.getElementById('wechat-preview-mask').style.display='none'">返回修改</div>
+    </div>
 
     <script src="main.js"></script>
 </body>
