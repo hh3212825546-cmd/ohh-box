@@ -1,12 +1,14 @@
 const canvas = document.getElementById('mainCanvas');
 const ctx = canvas.getContext('2d');
 
+
 // 📱 核心升级：精准移动端设备嗅探
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
 let currentImage = null, timer = null, isRecording = false, pickingColor = false;
 let colorPool = ['#FF0055', '#00FFCC', '#FFFF00', '#FF00FF']; 
+let frameCount = 0; // 记录运行了多少帧
 
 const ui = {
     sizeVar: document.getElementById('sizeVar'),
@@ -59,22 +61,32 @@ window.applyPreset = (name) => {
     render(); 
 };
 
-// 🎨 渲染引擎 (针对手机进行了隐式优化)
 function render() {
     if (!currentImage) return;
     const w = canvas.width, h = canvas.height;
-    ctx.drawImage(currentImage, 0, 0, w, h);
+    
+    // 🚀 核心控制逻辑：
+    // 我们定义一个变化阈值。滑块数值越小（速度越慢），阈值越大。
+    // 假设 speedValue 是滑块传来的值 (1-100)
+    const speedValue = parseInt(document.getElementById('stutter').value); // 复用卡顿或新开滑块
+    const changeThreshold = Math.max(1, Math.floor(60 / (speedValue / 10 + 1))); 
 
-    const split = parseInt(ui.rgbSplit.value);
-    if (split > 0) {
-        ctx.save(); ctx.globalCompositeOperation = 'screen'; ctx.globalAlpha = 0.5;
-        // 手机端优化：根据画布比例等比缩放色散距离
-        const splitRatio = split * (w / 1200); 
-        ctx.drawImage(currentImage, splitRatio, 0, w, h);
-        ctx.drawImage(currentImage, -splitRatio, 0, w, h);
-        ctx.restore();
+    // 只有当帧数达到阈值时，才更新随机位移和颜色
+    // 这样无论 render 运行多快，视觉上的闪动频率都是恒定的
+    if (frameCount % changeThreshold === 0) {
+        // ... 这里放原本那些生成随机 sx, sy, dx, dy 以及随机颜色的逻辑 ...
+        updateRandomParams(); 
     }
 
+    // 绘制逻辑（每一帧都执行，保证视频流丝滑）
+    drawBaseImage(w, h);
+    drawSlices(); // 使用 updateRandomParams 生成的旧参数
+    drawColorBlocks();
+    drawScanlines(w, h);
+    drawText(w, h);
+
+    frameCount++; // 帧数累加
+}
     const drift = ui.pixelDrift.checked;
     const sVar = parseInt(ui.sizeVar.value) / 100;
     // 手机端优化：移动端适当减少切片数量，保持视觉效果同时提升帧率
@@ -234,9 +246,11 @@ document.getElementById('recordBtn').onclick = async (e) => {
     btn.classList.replace('btn-danger', 'btn-success');
 
     // 特别修正：录制期间确保 render 持续运行
-    const recordTimer = setInterval(() => {
-        render(); 
-    }, 30); 
+   // 修改录制按钮点击事件里的 setInterval 部分
+const recordTimer = setInterval(() => {
+    // 录制时，我们每秒固定执行 30 次 render
+    render(); 
+}, 33); // 33ms 对应约 30fps
 
     setTimeout(() => {
         clearInterval(recordTimer);
