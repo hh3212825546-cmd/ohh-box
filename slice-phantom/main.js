@@ -1,6 +1,9 @@
 const canvas = document.getElementById('mainCanvas');
 const ctx = canvas.getContext('2d');
-const isWechat = /MicroMessenger/i.test(navigator.userAgent);
+
+// 📱 核心升级：精准移动端设备嗅探
+const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
 let currentImage = null, timer = null, isRecording = false, pickingColor = false;
 let colorPool = ['#FF0055', '#00FFCC', '#FFFF00', '#FF00FF']; 
@@ -40,29 +43,15 @@ function renderPalette() {
     });
 }
 
-window.removeColor = (index, e) => {
-    e.stopPropagation(); colorPool.splice(index, 1); renderPalette(); render();
-};
-
-function addColor(hex) {
-    colorPool.push(hex.toUpperCase()); renderPalette(); render();
-}
+window.removeColor = (index, e) => { e.stopPropagation(); colorPool.splice(index, 1); renderPalette(); render(); };
+function addColor(hex) { colorPool.push(hex.toUpperCase()); renderPalette(); render(); }
 
 window.applyPreset = (name) => {
     const p = PRESETS[name];
     if (!p) return;
-
-    ui.rgbSplit.value = p.split;
-    ui.scanlines.value = p.scan;
-    ui.overlayText.value = p.txt;
-    ui.textSize.value = p.size;
-    ui.textX.value = p.x;
-    ui.textY.value = p.y;
-    ui.pixelDrift.checked = p.drift;
-    
-    colorPool = [...p.colors]; 
-    renderPalette();
-    
+    ui.rgbSplit.value = p.split; ui.scanlines.value = p.scan; ui.overlayText.value = p.txt;
+    ui.textSize.value = p.size; ui.textX.value = p.x; ui.textY.value = p.y; ui.pixelDrift.checked = p.drift;
+    colorPool = [...p.colors]; renderPalette();
     ['rgbSplit', 'scanlines', 'textSize', 'textX', 'textY'].forEach(k => {
         const valEl = document.getElementById(k + 'Val');
         if (valEl) valEl.innerText = ui[k].value;
@@ -70,7 +59,7 @@ window.applyPreset = (name) => {
     render(); 
 };
 
-// 🎨 核心渲染引擎
+// 🎨 渲染引擎 (针对手机进行了隐式优化)
 function render() {
     if (!currentImage) return;
     const w = canvas.width, h = canvas.height;
@@ -78,24 +67,24 @@ function render() {
 
     const split = parseInt(ui.rgbSplit.value);
     if (split > 0) {
-        ctx.save();
-        ctx.globalCompositeOperation = 'screen'; ctx.globalAlpha = 0.5;
-        ctx.drawImage(currentImage, split, 0, w, h);
-        ctx.drawImage(currentImage, -split, 0, w, h);
+        ctx.save(); ctx.globalCompositeOperation = 'screen'; ctx.globalAlpha = 0.5;
+        // 手机端优化：根据画布比例等比缩放色散距离
+        const splitRatio = split * (w / 1200); 
+        ctx.drawImage(currentImage, splitRatio, 0, w, h);
+        ctx.drawImage(currentImage, -splitRatio, 0, w, h);
         ctx.restore();
     }
 
-    // ⚡ 猛药 1：水平撕裂的位移幅度大幅增强
     const drift = ui.pixelDrift.checked;
     const sVar = parseInt(ui.sizeVar.value) / 100;
-    for (let i = 0; i < 25; i++) {
+    // 手机端优化：移动端适当减少切片数量，保持视觉效果同时提升帧率
+    const slices = isMobile ? 18 : 25; 
+    for (let i = 0; i < slices; i++) {
         const sw = (w / 10) * (1 + (Math.random() - 0.5) * sVar * 4);
         const sh = (h / 20) * (1 + (Math.random() - 0.5) * sVar * 4);
         const sx = Math.random() * (currentImage.width - sw), sy = Math.random() * (currentImage.height - sh);
         let dx = Math.random() * (w - sw), dy = Math.random() * (h - sh);
-        
-        // 撕裂幅度拉大到 200 像素，让你肉眼可见切片在乱飞
-        if (drift) dx += (Math.random() - 0.5) * 200; 
+        if (drift) dx += (Math.random() - 0.5) * (w * 0.15); // 动态撕裂幅度
         ctx.drawImage(currentImage, sx, sy, sw, sh, dx, dy, sw, sh);
     }
 
@@ -103,32 +92,30 @@ function render() {
     for (let i = 0; i < colors; i++) {
         const bw = (w / 8) * Math.random(), bh = (h / 8) * Math.random();
         ctx.fillStyle = colorPool[Math.floor(Math.random() * colorPool.length)] || '#FFFFFF';
-        ctx.globalAlpha = 0.6;
-        ctx.fillRect(Math.random() * (w - bw), Math.random() * (h - bh), bw, bh);
-        ctx.globalAlpha = 1.0;
+        ctx.globalAlpha = 0.6; ctx.fillRect(Math.random() * (w - bw), Math.random() * (h - bh), bw, bh); ctx.globalAlpha = 1.0;
     }
 
-    // ⚡ 猛药 2：扫描线浓度增强
     const scan = parseInt(ui.scanlines.value);
     if (scan > 0) {
-        ctx.save();
-        ctx.fillStyle = `rgba(0,0,0,${scan / 100})`; // 从150改到100，让黑线更明显
+        ctx.save(); ctx.fillStyle = `rgba(0,0,0,${scan / 100})`;
         for (let i = 0; i < h; i += 4) ctx.fillRect(0, i, w, 2);
         ctx.restore();
     }
 
     if (ui.overlayText.value) {
         ctx.save();
-        ctx.font = `bold ${ui.textSize.value}px -apple-system, sans-serif`;
+        // 手机端文字大小自适应
+        const scaleRatio = w / 1200;
+        const fSize = parseInt(ui.textSize.value) * scaleRatio;
+        ctx.font = `bold ${fSize}px -apple-system, sans-serif`;
         ctx.fillStyle = ui.textColor.value;
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 15;
+        ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 10 * scaleRatio;
         ctx.fillText(ui.overlayText.value, (ui.textX.value / 100) * w, (ui.textY.value / 100) * h);
         ctx.restore();
     }
 }
 
-// 🖱️ 交互与取色
 canvas.onclick = (e) => {
     if (!pickingColor) return;
     const rect = canvas.getBoundingClientRect();
@@ -142,19 +129,13 @@ canvas.onclick = (e) => {
 document.getElementById('pickColor').onclick = () => { pickingColor = true; document.getElementById('toast').style.display = 'block'; };
 document.getElementById('addColorBtn').onclick = () => addColor('#' + Math.floor(Math.random() * 16777215).toString(16));
 
-// ⚡ 猛药 3：卡顿引擎强化
 function startEffectLoop() {
     if (timer) clearTimeout(timer);
     const loop = () => {
         if (!isRecording) render();
-        
-        let delay = 120; // 基础刷新更快，让动效更丝滑
+        let delay = 120;
         const stutterIntensity = parseInt(ui.stutter.value) / 100;
-        
-        // 如果触发卡顿，强行停顿 0.3s 到 0.8s，故障感拉满
-        if (stutterIntensity > 0 && Math.random() < stutterIntensity) {
-            delay += 300 + Math.random() * 500; 
-        }
+        if (stutterIntensity > 0 && Math.random() < stutterIntensity) { delay += 200 + Math.random() * 400; }
         timer = setTimeout(loop, delay);
     };
     loop();
@@ -167,7 +148,8 @@ document.getElementById('imageUpload').onchange = (e) => {
     r.onload = (ev) => {
         currentImage = new Image();
         currentImage.onload = () => {
-            const max = 1200; 
+            // 🚀 核心优化：智能分辨率降维打击
+            const max = isMobile ? 800 : 1200; // 手机端使用 800px，保证绝对流畅
             const ratio = currentImage.width / currentImage.height;
             if (ratio > 1) { canvas.width = max; canvas.height = max / ratio; } 
             else { canvas.height = max; canvas.width = max * ratio; }
@@ -178,22 +160,32 @@ document.getElementById('imageUpload').onchange = (e) => {
     r.readAsDataURL(file);
 };
 
-// 🎬 导出功能
+// 📸 全平台出图逻辑
 document.getElementById('downloadPngBtn').onclick = () => {
     if (!currentImage) return;
     render();
     const d = canvas.toDataURL('image/png');
-    if (isWechat) {
-        document.getElementById('wechat-img').src = d;
-        document.getElementById('wechat-mask').style.display = 'flex';
+    // 手机端一律弹出长按保存遮罩
+    if (isMobile) {
+        const mask = document.getElementById('wechat-mask');
+        const img = document.getElementById('wechat-img');
+        img.src = d;
+        mask.style.display = 'flex';
     } else {
-        const a = document.createElement('a'); a.download = `SLICE_${Date.now()}.png`; a.href = d; a.click();
+        // 电脑端直接下载
+        const a = document.createElement('a'); a.download = `OHH_SLICE_${Date.now()}.png`; a.href = d; a.click();
     }
 };
 
+// 🎥 移动端视频录制智能拦截
 document.getElementById('recordBtn').onclick = (e) => {
     if (!currentImage || isRecording) return;
-    if (isWechat) { alert("微信内暂不支持导出视频，请在浏览器中打开此页面。"); return; }
+    
+    // 拦截手机浏览器（尤其是 iOS），指引他们用录屏
+    if (isMobile) { 
+        alert("由于手机系统的安全限制（特别是苹果 iOS），无法直接生成无损视频。👉 强烈建议您：上传照片后，使用手机自带的【屏幕录制】功能录制上方画面，效果最完美！"); 
+        return; 
+    }
     
     isRecording = true; const btn = e.target; const chunks = [];
     const mr = new MediaRecorder(canvas.captureStream(30), { mimeType: 'video/webm;codecs=vp9', videoBitsPerSecond: 8000000 }); 
@@ -201,7 +193,7 @@ document.getElementById('recordBtn').onclick = (e) => {
     mr.ondataavailable = ev => chunks.push(ev.data);
     mr.onstop = () => {
         const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(chunks, { type: 'video/webm' })); 
-        a.download = `SLICE_LIVE_${Date.now()}.webm`; a.click();
+        a.download = `OHH_LIVE_${Date.now()}.webm`; a.click();
         isRecording = false; btn.innerText = "🎥 导出 2.5s 实况视频"; btn.classList.replace('btn-success', 'btn-danger');
     };
 
@@ -210,11 +202,8 @@ document.getElementById('recordBtn').onclick = (e) => {
     setTimeout(() => mr.stop(), 2500);
 };
 
-// 🚀 初始化与终极监听防御
 function init() {
     renderPalette();
-    
-    // 监听滑块（加了更稳固的 addEventListener 方案防失效）
     ['sizeVar', 'rgbSplit', 'scanlines', 'stutter', 'colorCount', 'textSize', 'textX', 'textY'].forEach(id => {
         const el = document.getElementById(id);
         const valEl = document.getElementById(id + 'Val');
@@ -225,20 +214,17 @@ function init() {
             if (!isRecording) render();
         });
     });
-
-    ['overlayText', 'textColor'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.addEventListener('input', () => { if (!isRecording) render(); });
-    });
-
-    if (ui.pixelDrift) {
-        ui.pixelDrift.addEventListener('change', () => { if (!isRecording) render(); });
-    }
+    ['overlayText', 'textColor'].forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener('input', () => { if (!isRecording) render(); }); });
+    if (ui.pixelDrift) { ui.pixelDrift.addEventListener('change', () => { if (!isRecording) render(); }); }
     
-    canvas.width = 1000; canvas.height = 1000;
-    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 1000, 1000);
-    ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.font = 'bold 80px sans-serif'; ctx.fillText('OHH BOX', 500, 480);
-    ctx.font = '24px sans-serif'; ctx.fillStyle = '#64748b'; ctx.fillText('切片幻影 PRO v2.7', 500, 540);
+    canvas.width = isMobile ? 800 : 1200; 
+    canvas.height = canvas.width;
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // 初始引导语比例自适应
+    const scale = canvas.width / 1000;
+    ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.font = `bold ${80 * scale}px sans-serif`; ctx.fillText('OHH BOX', canvas.width/2, canvas.height/2 - 20);
+    ctx.font = `${24 * scale}px sans-serif`; ctx.fillStyle = '#64748b'; ctx.fillText('切片幻影 移动端优化版', canvas.width/2, canvas.height/2 + 40);
 }
 
 init();
