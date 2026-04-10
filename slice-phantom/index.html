@@ -6,7 +6,6 @@
     <title>切片幻影 - OHH BOX</title>
     <link rel="stylesheet" href="../dot-collage/style.css">
     <style>
-        /* 针对此工具的特定样式微调，直接写在这里 */
         .color-palette { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; align-items: center; }
         .color-item { position: relative; width: 34px; height: 34px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.1); cursor: pointer; }
         .color-del { position: absolute; top: -5px; right: -5px; width: 16px; height: 16px; background: #ef4444; color: white; border-radius: 50%; font-size: 10px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 1px solid white; }
@@ -23,7 +22,7 @@
         <div class="header">
             <a href="../index.html" style="text-decoration:none; font-size:18px; margin-right:12px;">🏠</a>
             <h1 class="brand">切片幻影</h1>
-            <span class="brand-tag">v2.6 PRO</span>
+            <span class="brand-tag">v2.7</span>
         </div>
 
         <div class="setting-card">
@@ -49,7 +48,7 @@
             <input type="range" id="scanlines" min="0" max="100" value="0">
             <label>不规则卡顿强度 <span id="stutterVal">30</span>%</label>
             <input type="range" id="stutter" min="0" max="100" value="30">
-            <label style="cursor:pointer; font-size:11px;"><input type="checkbox" id="pixelDrift" checked> 开启水平撕裂位移</label>
+            <label style="cursor:pointer; font-size:11px; margin-top:8px; display:block;"><input type="checkbox" id="pixelDrift" checked> 开启水平撕裂位移</label>
         </div>
 
         <div class="setting-card">
@@ -67,7 +66,7 @@
             <input type="text" id="overlayText" value="OHH BOX" placeholder="输入文字...">
             <div style="display:flex; gap:10px; margin-top:5px;">
                 <div style="flex:1;"><label>字号 <span id="textSizeVal">80</span></label><input type="range" id="textSize" min="20" max="200" value="80"></div>
-                <div style="width:50px;"><label>颜色</label><input type="color" id="textColor" value="#ffffff" style="width:100%; height:32px; border:none; border-radius:6px; background:none;"></div>
+                <div style="width:50px;"><label>颜色</label><input type="color" id="textColor" value="#ffffff" style="width:100%; height:32px; border:none; border-radius:6px; background:none; cursor:pointer;"></div>
             </div>
             <label>位置 (X: <span id="textXVal">50</span>% | Y: <span id="textYVal">90</span>%)</label>
             <div style="display:flex; gap:10px;">
@@ -82,16 +81,13 @@
         </div>
     </div>
 
-    <div class="preview-area">
-        <canvas id="mainCanvas"></canvas>
-    </div>
+    <div class="preview-area"><canvas id="mainCanvas"></canvas></div>
 
     <div id="wechat-mask" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:2000; display:none; flex-direction:column; align-items:center; justify-content:center;" onclick="this.style.display='none'">
-        <p style="color:white; margin-bottom:15px; font-weight:bold;">✨ 实况生成成功！请长按保存图片</p>
+        <p style="color:white; margin-bottom:15px; font-weight:bold;">✨ 实况生成成功！请长按保存</p>
         <img id="wechat-img" style="max-width:90%; max-height:80%; border-radius:8px; box-shadow: 0 0 30px rgba(59, 130, 246, 0.2);">
-        <p style="color:#94a3b8; margin-top:20px; font-size:12px;">点击任意位置返回</p>
     </div>
 
-    <script src="main.js"></script>
+    <script src="main.js?v=2.7"></script>
 </body>
 </html>
