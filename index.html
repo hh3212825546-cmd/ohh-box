@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OHH BOX - 独立创意工具箱</title>
+    <style>
+        :root { --bg: #f8fafc; --text: #0f172a; --primary: #3b82f6; --radius: 20px; }
+        body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        
+        .header { text-align: center; padding: 80px 20px 40px; }
+        .brand { font-size: 48px; font-weight: 900; letter-spacing: -1px; margin: 0; }
+        .subtitle { color: #64748b; margin-top: 10px; font-size: 18px; }
+
+        .tools-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; width: 100%; max-width: 1000px; padding: 20px; box-sizing: border-box; }
+        
+        /* 工具卡片设计 */
+        .tool-card { 
+            background: #ffffff; padding: 30px; border-radius: var(--radius); border: 1px solid #e2e8f0; 
+            text-decoration: none; color: inherit; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex; flex-direction: column; position: relative; overflow: hidden;
+        }
+        .tool-card:hover { transform: translateY(-8px); border-color: var(--primary); box-shadow: 0 20px 40px rgba(0,0,0,0.05); }
+        
+        .tool-icon { font-size: 40px; margin-bottom: 20px; }
+        .tool-name { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+        .tool-desc { font-size: 14px; color: #64748b; line-height: 1.5; }
+        
+        .badge { position: absolute; top: 15px; right: 15px; background: #f1f5f9; font-size: 11px; padding: 4px 10px; border-radius: 20px; font-weight: 700; color: var(--primary); }
+        .badge.new { background: var(--primary); color: white; }
+
+        .footer { margin-top: auto; padding: 40px; color: #94a3b8; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1 class="brand">OHH BOX</h1>
+        <p class="subtitle">有趣、纯净、高效的独立创作工具集</p>
+    </header>
+
+    <main class="tools-grid">
+        <a href="./ohh-box/index.html" class="tool-card">
+            <span class="badge new">核心功能</span>
+            <div class="tool-icon">✨</div>
+            <div class="tool-name">氛围排版引擎</div>
+            <div class="tool-desc">一键提取图像色彩，通过粒子画笔和动效生成富有情绪价值的氛围图。</div>
+        </a>
+
+        <a href="#" class="tool-card" style="opacity: 0.6; cursor: not-allowed;">
+            <span class="badge">即将到来</span>
+            <div class="tool-icon">🧩</div>
+            <div class="tool-name">智能文字海报</div>
+            <div class="tool-desc">自动排版文字，让你的句子变成设计感十足的海报作品。</div>
+        </a>
+
+        <a href="#" class="tool-card" style="opacity: 0.6; cursor: not-allowed;">
+            <span class="badge">规划中</span>
+            <div class="tool-icon">📸</div>
+            <div class="tool-name">复古胶片滤镜</div>
+            <div class="tool-desc">纯前端处理的复古胶片质感，让每一张照片都拥有电影感。</div>
+        </a>
+    </main>
+
+    <footer class="footer">
+        Made with ❤️ by @ohh
+    </footer>
+</body>
+</html>
