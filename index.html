@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>OHH BOX - 高阶排版与动效引擎</title>
+    <style>
+        :root { --bg-body: #f1f5f9; --panel-bg: #ffffff; --text-main: #0f172a; --text-sub: #64748b; --border: #e2e8f0; --primary: #0f172a; --primary-hover: #334155; --accent: #3b82f6; --radius: 14px; }
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg-body); display: flex; height: 100vh; overflow: hidden; color: var(--text-main); flex-direction: row; }
+        
+        .sidebar { width: 380px; background: var(--panel-bg); padding: 20px; box-shadow: 2px 0 20px rgba(0,0,0,0.04); overflow-y: auto; display: flex; flex-direction: column; gap: 14px; z-index: 10; }
+        .sidebar::-webkit-scrollbar { width: 6px; } .sidebar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+        .preview-area { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; position: relative; }
+        
+        .header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+        .brand { margin: 0; font-size: 26px; font-weight: 900; letter-spacing: -0.5px; }
+        .brand-tag { font-size: 11px; font-weight: 600; background: var(--primary); color: white; padding: 3px 8px; border-radius: 20px; }
+
+        .setting-card { background: #f8fafc; padding: 16px; border-radius: var(--radius); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
+        .card-title { font-size: 14px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 6px; margin-bottom: 4px; border-bottom: 2px solid var(--border); padding-bottom: 6px;}
+        
+        label { font-size: 13px; font-weight: 600; color: var(--text-sub); display: flex; justify-content: space-between; align-items: center;}
+        select, input[type="text"] { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; background: white; color: var(--text-main); font-weight: 500; outline: none; transition: border-color 0.2s; box-sizing: border-box;}
+        
+        .color-picker-wrapper { display: flex; align-items: center; gap: 6px; flex: 1; background: white; border: 1px solid var(--border); border-radius: 8px; padding: 4px 6px; overflow: hidden; transition: border-color 0.2s;}
+        .color-picker-wrapper.active { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1); }
+        input[type="color"] { border: none; border-radius: 4px; width: 30px; height: 30px; cursor: pointer; background: white; padding: 0; }
+        .color-hex { border: none !important; padding: 0 !important; width: 60px !important; font-size: 13px !important; font-family: monospace; color: var(--text-sub) !important; background: transparent !important; }
+        .btn-picker { background: #f1f5f9; border: 1px solid var(--border); border-radius: 6px; padding: 4px 6px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: 0.2s;}
+        .btn-picker:hover { background: #e2e8f0; }
+
+        .quick-palette { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap;}
+        .swatch { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 1px solid rgba(0,0,0,0.1); transition: transform 0.1s;}
+        .swatch:active { transform: scale(0.8); }
+
+        input[type="range"] { width: 100%; height: 6px; background: #cbd5e1; border-radius: 4px; outline: none; -webkit-appearance: none; margin: 10px 0; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; background: var(--primary); border-radius: 50%; cursor: pointer; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+        
+        input[type="file"] { font-size: 13px; color: var(--text-sub); }
+        input[type="file"]::file-selector-button { border: none; background: white; border: 1px solid var(--border); padding: 8px 14px; border-radius: 6px; color: var(--text-main); cursor: pointer; font-weight: 600; margin-right: 12px; transition: 0.2s; }
+        
+        .btn-group { display: flex; gap: 10px; flex-wrap: wrap;}
+        .btn { flex: 1; min-width: 45%; border: none; padding: 12px; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: 14px; transition: all 0.2s; display: flex; justify-content: center; align-items: center; gap: 6px; }
+        .btn:active { transform: scale(0.98); }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-secondary { background: white; color: var(--text-main); border: 1px solid var(--border); }
+        .btn-danger { background: #ef4444; color: white; }
+
+        canvas { display: block; max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 20px 50px rgba(0,0,0,0.12); border-radius: 12px; background: white; touch-action: none; cursor: crosshair;}
+
+        #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(15, 23, 42, 0.9); color: white; padding: 12px 24px; border-radius: 30px; z-index: 1000; display: none; font-size: 14px; font-weight: bold; pointer-events: none; box-shadow: 0 10px 25px rgba(0,0,0,0.2); animation: pop 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28); }
+        @keyframes pop { 0% { transform: translate(-50%, -20px) scale(0.8); opacity: 0; } 100% { transform: translate(-50%, 0) scale(1); opacity: 1; } }
+
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            .sidebar { width: 100%; height: 50vh; order: 2; padding: 16px; box-sizing: border-box; box-shadow: 0 -10px 20px rgba(0,0,0,0.05); border-radius: 20px 20px 0 0; }
+            .preview-area { height: 50vh; order: 1; padding: 16px; }
+            .header { justify-content: center; margin-bottom: 10px;}
+        }
+    </style>
+</head>
+<body>
+    <div id="toast">🎯 请点击右侧画面提取颜色</div>
+
+    <div class="sidebar">
+        <div class="header"><h1 class="brand">OHH BOX</h1><span class="brand-tag">PRO</span></div>
+        
+        <div class="setting-card">
+            <div class="card-title">🖼️ 核心图像与排版</div>
+            <label>上传主图 <span id="imgStatus" style="color: #f59e0b; font-size: 12px;">等待上传</span></label>
+            <input type="file" id="imageUpload" accept="image/*">
+            <div style="display:flex; gap:10px; margin-top:8px;">
+                <select id="canvasRatio" style="flex:1;"><option value="3:4">3:4 竖图</option><option value="1:1">1:1 正方</option><option value="4:3">4:3 横图</option><option value="9:16">9:16 视频</option></select>
+                <select id="layoutDir" style="flex:1;"><option value="top">主图在上</option><option value="bottom">主图在下</option><option value="left">主图在左</option><option value="right">主图在右</option></select>
+            </div>
+            
+            <label style="margin-top:8px; color: var(--accent);">背景区域占比 <span id="bgSplitRatioVal">50</span>%</label>
+            <input type="range" id="bgSplitRatio" min="10" max="90" value="50">
+            
+            <label style="margin-top:8px;">主图微调缩放 <span id="imgScaleVal">100</span>%</label>
+            <input type="range" id="imgScale" min="50" max="300" value="100">
+            <div style="display:flex; gap:16px;">
+                <div style="flex:1"><label>X偏移</label><input type="range" id="imgOffsetX" min="-400" max="400" value="0"></div>
+                <div style="flex:1"><label>Y偏移</label><input type="range" id="imgOffsetY" min="-400" max="400" value="0"></div>
+            </div>
+        </div>
+
+        <div class="setting-card">
+            <div class="card-title">🎨 氛围背景与色彩</div>
+            <select id="bgType"><option value="solid">纯色填充</option><option value="gradient">平滑渐变</option><option value="stripes">艺术条纹</option><option value="image">自定义背景图</option></select>
+            <div id="imageControls" style="display:none; margin-top:5px;"><input type="file" id="bgImageUpload" accept="image/*"></div>
+            
+            <div style="display:flex; gap:10px; margin-top:5px;" id="colorControls">
+                <div class="color-picker-wrapper active" id="wrapColor1">
+                    <input type="color" id="color1" value="#fef08a">
+                    <input type="text" id="color1Hex" class="color-hex" value="#fef08a">
+                    <button class="btn-picker" id="pickColor1" title="在图片上提取颜色">🎯</button>
+                </div>
+                <div class="color-picker-wrapper" id="wrapColor2">
+                    <input type="color" id="color2" value="#f97316">
+                    <input type="text" id="color2Hex" class="color-hex" value="#f97316">
+                    <button class="btn-picker" id="pickColor2" title="在图片上提取颜色">🎯</button>
+                </div>
+            </div>
+            
+            <div id="colorHistoryArea" style="display:none; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border);">
+                <div style="font-size: 11px; color: var(--text-sub); margin-bottom: 4px;">🕒 历史取色 (点击应用)：</div>
+                <div class="quick-palette" id="historyPalette"></div>
+            </div>
+
+            <div id="quickPaletteArea" style="margin-top: 6px;">
+                <div style="font-size: 11px; color: var(--text-sub); margin-bottom: 4px;">🎨 推荐基础色：</div>
+                <div class="quick-palette">
+                    <div class="swatch" data-c="#fef08a" style="background:#fef08a;"></div>
+                    <div class="swatch" data-c="#f97316" style="background:#f97316;"></div>
+                    <div class="swatch" data-c="#fda4af" style="background:#fda4af;"></div>
+                    <div class="swatch" data-c="#bfdbfe" style="background:#bfdbfe;"></div>
+                    <div class="swatch" data-c="#a7f3d0" style="background:#a7f3d0;"></div>
+                    <div class="swatch" data-c="#0f172a" style="background:#0f172a;"></div>
+                    <div class="swatch" data-c="#ffffff" style="background:#ffffff;"></div>
+                </div>
+            </div>
+
+            <div id="stripeControls" style="display:none; margin-top: 8px;">
+                <label>条纹粗细/疏密 <span id="stripeDensityVal">40</span>px</label>
+                <input type="range" id="stripeDensity" min="10" max="150" value="40">
+            </div>
+        </div>
+
+        <div class="setting-card">
+            <div class="card-title">✨ 粒子特效引擎</div>
+            <div style="display:flex; gap:10px;">
+                <select id="shapeType" style="flex:2;">
+                    <option value="drop">💧 灵动雨滴</option>
+                    <option value="star">⭐ 经典星星</option>
+                    <option value="heart">❤️ 浪漫爱心</option>
+                    <option value="leaf">🍃 飘落树叶</option>
+                    <option value="moon">🌙 弯弯月牙</option>
+                    <option value="circle">⏺️ 饱满圆点</option>
+                    <option value="square">⏹️ 现代正方</option>
+                    <option value="diamond">♦️ 锐利菱形</option>
+                    <option value="triangle">🔺 锐利三角</option>
+                    <option value="text">✍️ 文字/Emoji</option>
+                </select>
+                <input type="text" id="customText" value="OHH" style="display:none; flex:1;" placeholder="输入文字">
+            </div>
+            
+            <label style="margin-top:8px;">一键满屏粒子数 <span id="particleCountVal">30</span></label>
+            <input type="range" id="particleCount" min="5" max="150" value="30">
+            
+            <label style="margin-top:8px;">画笔发散范围 (随手画) <span id="scatterVal">40</span>px</label>
+            <input type="range" id="scatter" min="0" max="150" value="40">
+            
+            <div style="display:flex; gap:16px; margin-top:8px;">
+                <div style="flex:1"><label>形状基础大小 <span id="sizeVal">35</span></label><input type="range" id="sizeRange" min="15" max="150" value="35"></div>
+                <div style="flex:1"><label style="color: var(--accent);">大小差异 <span id="sizeVarVal">50</span>%</label><input type="range" id="sizeVar" min="0" max="100" value="50"></div>
+            </div>
+            
+            <label style="margin-top:4px;">边缘羽化 <span id="featherVal">10</span></label>
+            <input type="range" id="featherRange" min="0" max="40" value="10">
+            
+            <label style="margin-top:8px; cursor:pointer;"><input type="checkbox" id="unifiedRotation" style="margin-right:8px;">锁定形状统一朝向</label>
+            <div id="angleControl" style="display:none; margin-top:4px;"><input type="range" id="angleRange" min="0" max="360" value="0"></div>
+        </div>
+
+        <div class="setting-card" style="border-color: var(--accent); border-width: 2px;">
+            <div class="card-title" style="color: var(--accent);">🎬 动效与导出 (Live)</div>
+            <div class="btn-group">
+                <button class="btn btn-secondary" id="randomBtn">🎲 随机满屏</button>
+                <button class="btn btn-secondary" id="previewAnimBtn">▶️ 预览逐个出现</button>
+                <button class="btn btn-primary" id="downloadPngBtn" style="width:100%;">🖼️ 导出高清静态图 (PNG)</button>
+                <button class="btn btn-danger" id="recordAnimBtn" style="width:100%;">🎥 导出动态实况视频 (MP4)</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="preview-area"><canvas id="mainCanvas"></canvas></div>
+
+    <script>
+        const SITE_CONFIG = { title: "OHH BOX", subtitle: "上传一张照片，开始创作", author: "@独立创作者" };
+
+        const canvas = document.getElementById('mainCanvas'); const ctx = canvas.getContext('2d');
+        let currentImage = null, currentBgImage = null, particles = [], isDrawing = false, lastPos = {x:0, y:0};
+        let isRecording = false, mediaRecorder, recordedChunks = [];
+        let animationFrameId = null;
+        let pickingColorFor = null; 
+
+        // --- 新增：历史颜色记忆系统 ---
+        let colorHistory = [];
+        let lastActiveColorInput = 'color1'; // 记住用户最后点的是哪个颜色的输入框
+
+        const ui = {
+            canvasRatio: document.getElementById('canvasRatio'), layoutDir: document.getElementById('layoutDir'), bgSplitRatio: document.getElementById('bgSplitRatio'),
+            bgType: document.getElementById('bgType'), color1: document.getElementById('color1'), color1Hex: document.getElementById('color1Hex'), color2: document.getElementById('color2'), color2Hex: document.getElementById('color2Hex'), stripeDensity: document.getElementById('stripeDensity'),
+            featherRange: document.getElementById('featherRange'), shapeType: document.getElementById('shapeType'), customText: document.getElementById('customText'),
+            sizeRange: document.getElementById('sizeRange'), sizeVar: document.getElementById('sizeVar'), unifiedRotation: document.getElementById('unifiedRotation'), angleRange: document.getElementById('angleRange'), angleControl: document.getElementById('angleControl'),
+            imgScale: document.getElementById('imgScale'), imgOffsetX: document.getElementById('imgOffsetX'), imgOffsetY: document.getElementById('imgOffsetY'), particleCount: document.getElementById('particleCount'),
+            scatter: document.getElementById('scatter') // ✅ 回归
+        };
+
+        function showToast(msg) { const t = document.getElementById('toast'); t.innerText = msg; t.style.display = 'block'; }
+        function hideToast() { document.getElementById('toast').style.display = 'none'; }
+        
+        // 激活状态高亮
+        function setActiveColorInput(target) {
+            lastActiveColorInput = target;
+            document.getElementById('wrapColor1').classList.remove('active');
+            document.getElementById('wrapColor2').classList.remove('active');
+            document.getElementById('wrap' + target.charAt(0).toUpperCase() + target.slice(1)).classList.add('active');
+        }
+
+        // 历史颜色渲染器
+        function addColorToHistory(hex) {
+            hex = hex.toUpperCase();
+            if(colorHistory[0] === hex) return; // 防止连续重复
+            colorHistory = colorHistory.filter(c => c !== hex); // 去重并移到最前
+            colorHistory.unshift(hex);
+            if(colorHistory.length > 8) colorHistory.pop(); // 最多存 8 个
+            
+            const area = document.getElementById('colorHistoryArea');
+            const palette = document.getElementById('historyPalette');
+            area.style.display = 'block';
+            palette.innerHTML = '';
+            colorHistory.forEach(c => {
+                const div = document.createElement('div');
+                div.className = 'swatch'; div.style.background = c;
+                div.onclick = () => { applyColor(lastActiveColorInput, c); }; // 点击应用到活跃的色块
+                palette.appendChild(div);
+            });
+        }
+
+        function applyColor(target, hex) {
+            ui[target].value = hex; ui[target + 'Hex'].value = hex;
+            setActiveColorInput(target);
+            render();
+        }
+
+        document.getElementById('wrapColor1').onclick = () => setActiveColorInput('color1');
+        document.getElementById('wrapColor2').onclick = () => setActiveColorInput('color2');
+
+        document.getElementById('pickColor1').onclick = (e) => { e.stopPropagation(); setActiveColorInput('color1'); pickingColorFor = 'color1'; showToast('🎯 请点击右侧画面提取颜色'); };
+        document.getElementById('pickColor2').onclick = (e) => { e.stopPropagation(); setActiveColorInput('color2'); pickingColorFor = 'color2'; showToast('🎯 请点击右侧画面提取颜色'); };
+
+        document.querySelectorAll('#quickPaletteArea .swatch').forEach(sw => {
+            sw.addEventListener('click', (e) => {
+                const c = e.target.getAttribute('data-c');
+                applyColor(lastActiveColorInput, c);
+                addColorToHistory(c);
+            });
+        });
+
+        // 监听颜色输入变化，加入历史
+        ['color1', 'color2'].forEach(target => {
+            ui[target].addEventListener('input', e => { ui[target+'Hex'].value = e.target.value.toUpperCase(); render(); });
+            ui[target].addEventListener('change', e => { addColorToHistory(e.target.value); }); // 收起调色盘时加入历史
+            ui[target+'Hex'].addEventListener('change', e => { 
+                if(/^#[0-9A-F]{6}$/i.test(e.target.value)){ applyColor(target, e.target.value); addColorToHistory(e.target.value); } 
+            });
+        });
+
+        function updateCanvasSize() {
+            const r = ui.canvasRatio.value.split(':'); canvas.width = 1080; canvas.height = Math.round((1080 / parseInt(r[0])) * parseInt(r[1]));
+            generateRandomParticles(); render();
+        }
+
+        function generateRandomParticles() {
+            particles = []; const count = parseInt(ui.particleCount.value); 
+            for(let i=0; i<count; i++) particles.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, randSize: Math.random(), rotation: Math.random()*Math.PI*2, colorIndex: Math.random()>0.5?0:1 });
+        }
+
+        ui.canvasRatio.onchange = updateCanvasSize;
+        ui.bgType.onchange = (e) => { 
+            document.getElementById('imageControls').style.display = e.target.value === 'image' ? 'block' : 'none'; 
+            document.getElementById('colorControls').style.display = (e.target.value === 'solid' || e.target.value === 'gradient' || e.target.value === 'stripes') ? 'flex' : 'none'; 
+            document.getElementById('stripeControls').style.display = e.target.value === 'stripes' ? 'block' : 'none';
+            render(); 
+        };
+        ui.shapeType.onchange = (e) => { ui.customText.style.display = e.target.value === 'text' ? 'block' : 'none'; render(); };
+        ui.unifiedRotation.onchange = (e) => { ui.angleControl.style.display = e.target.checked ? 'block' : 'none'; render(); };
+        
+        ['layoutDir', 'bgSplitRatio', 'customText', 'angleRange', 'imgScale', 'imgOffsetX', 'imgOffsetY', 'featherRange', 'sizeRange', 'sizeVar', 'particleCount', 'stripeDensity', 'scatter'].forEach(k => {
+            if(ui[k]) { ui[k].oninput = ui[k].onchange = () => { if(document.getElementById(k+'Val')) document.getElementById(k+'Val').innerText = ui[k].value; if(k==='particleCount') generateRandomParticles(); render(); }; }
+        });
+
+        document.getElementById('imageUpload').onchange = (e) => {
+            if(!e.target.files[0]) return; const reader = new FileReader(); document.getElementById('imgStatus').innerText = "读取中..."; document.getElementById('imgStatus').style.color = "var(--primary)";
+            reader.onload = (ev) => { currentImage = new Image(); currentImage.onload = () => { document.getElementById('imgStatus').innerText = "已加载 ✅"; document.getElementById('imgStatus').style.color = "#10b981"; generateRandomParticles(); render(); }; currentImage.src = ev.target.result; };
+            reader.readAsDataURL(e.target.files[0]);
+        };
+        document.getElementById('bgImageUpload').onchange = (e) => {
+            if(!e.target.files[0]) return; const reader = new FileReader(); reader.onload = (ev) => { currentBgImage = new Image(); currentBgImage.onload = render; currentBgImage.src = ev.target.result; }; reader.readAsDataURL(e.target.files[0]);
+        };
+
+        function getPos(e) { const r = canvas.getBoundingClientRect(); const cx = e.touches ? e.touches[0].clientX : e.clientX; const cy = e.touches ? e.touches[0].clientY : e.clientY; return { x: (cx - r.left) * (canvas.width / r.width), y: (cy - r.top) * (canvas.height / r.height) }; }
+        
+        function startDrawing(e) { 
+            if(!currentImage) return; 
+            const pos = getPos(e);
+            if (pickingColorFor) {
+                try {
+                    const pixel = ctx.getImageData(pos.x, pos.y, 1, 1).data;
+                    const hex = '#' + ((1<<24) + (pixel[0]<<16) + (pixel[1]<<8) + pixel[2]).toString(16).slice(1).toUpperCase();
+                    applyColor(pickingColorFor, hex);
+                    addColorToHistory(hex);
+                } catch(err) { alert('跨域图片可能会受到浏览器安全限制无法取色，本地上传的图片不受影响。'); }
+                pickingColorFor = null; hideToast(); return; 
+            }
+            isDrawing = true; lastPos = pos; 
+        }
+        
+        function moveDrawing(e) {
+            if(!isDrawing || pickingColorFor) return; const pos = getPos(e);
+            if (Math.hypot(pos.x - lastPos.x, pos.y - lastPos.y) > 15) {
+                const scatterVal = parseInt(ui.scatter.value); // ✅ 读取新增的散布范围
+                particles.push({ 
+                    x: pos.x + (Math.random()-0.5) * scatterVal * 2, 
+                    y: pos.y + (Math.random()-0.5) * scatterVal * 2, 
+                    randSize: Math.random(), rotation: Math.random()*Math.PI*2, colorIndex: Math.random()>0.5?0:1 
+                });
+                lastPos = pos; render();
+            }
+            if(e.touches && e.cancelable) e.preventDefault();
+        }
+        canvas.addEventListener('mousedown', startDrawing); canvas.addEventListener('mousemove', moveDrawing); window.addEventListener('mouseup', () => isDrawing=false);
+        canvas.addEventListener('touchstart', startDrawing, {passive: false}); canvas.addEventListener('touchmove', moveDrawing, {passive: false}); canvas.addEventListener('touchend', () => isDrawing=false);
+
+        function drawShape(ctx, type, size) {
+            if(type === 'text'){ ctx.font = `bold ${size}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(ui.customText.value||'OHH', 0, 0); return false; }
+            ctx.beginPath();
+            if(type==='circle') { ctx.arc(0,0,size/2,0,Math.PI*2); }
+            else if(type==='star') { for(let i=0;i<10;i++){ let r=i%2==0?size/2:size/4; let a=i*Math.PI/5-Math.PI/2; ctx.lineTo(Math.cos(a)*r, Math.sin(a)*r); } }
+            else if(type==='drop') { ctx.moveTo(0,-size/2); ctx.quadraticCurveTo(size/3,0,size/3,size/4); ctx.arc(0,size/4,size/3,0,Math.PI); ctx.quadraticCurveTo(-size/3,0,0,-size/2); }
+            else if(type==='heart') { ctx.moveTo(0,size/4); ctx.bezierCurveTo(size/2,-size/4,size/2,-size/1.5,0,-size/3); ctx.bezierCurveTo(-size/2,-size/1.5,-size/2,-size/4,0,size/4); }
+            else if(type==='leaf') { ctx.moveTo(0,-size/2); ctx.quadraticCurveTo(size/2,0,0,size/2); ctx.quadraticCurveTo(-size/2,0,0,-size/2); }
+            else if(type==='moon') { ctx.arc(0, 0, size/2, Math.PI*0.5, Math.PI*1.5, false); ctx.arc(size/6, 0, size/2.5, Math.PI*1.5, Math.PI*0.5, true); }
+            else if(type==='square') { ctx.rect(-size/2, -size/2, size, size); }
+            else if(type==='diamond') { ctx.moveTo(0, -size/2); ctx.lineTo(size/2, 0); ctx.lineTo(0, size/2); ctx.lineTo(-size/2, 0); }
+            else if(type==='triangle') { ctx.moveTo(0, -size/2); ctx.lineTo(size/2, size/2); ctx.lineTo(-size/2, size/2); } // 新增三角形
+            ctx.closePath(); return true;
+        }
+
+        function render(drawLimit = particles.length) {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            
+            if(!currentImage) {
+                ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,canvas.width,canvas.height);
+                ctx.textAlign = 'center'; ctx.fillStyle = '#0f172a';
+                ctx.font = 'bold 80px -apple-system, sans-serif'; ctx.fillText(SITE_CONFIG.title, canvas.width/2, canvas.height/2 - 60);
+                ctx.fillStyle = '#64748b'; ctx.font = '36px sans-serif'; ctx.fillText(SITE_CONFIG.subtitle, canvas.width/2, canvas.height/2 + 20);
+                ctx.fillStyle = '#94a3b8'; ctx.font = '24px monospace'; ctx.fillText(SITE_CONFIG.author, canvas.width/2, canvas.height/2 + 80);
+                return;
+            }
+
+            const layout = ui.layoutDir.value; 
+            const splitRatio = parseInt(ui.bgSplitRatio.value) / 100;
+            let imgR = {x:0, y:0, w:canvas.width, h:canvas.height}; 
+            let bgR = {x:0, y:0, w:canvas.width, h:canvas.height};
+            
+            if(layout==='top') { imgR.h = canvas.height * (1 - splitRatio); bgR.y = imgR.h; bgR.h = canvas.height * splitRatio; } 
+            else if(layout==='bottom') { bgR.h = canvas.height * splitRatio; imgR.y = bgR.h; imgR.h = canvas.height * (1 - splitRatio); } 
+            else if(layout==='left') { imgR.w = canvas.width * (1 - splitRatio); bgR.x = imgR.w; bgR.w = canvas.width * splitRatio; } 
+            else if(layout==='right') { bgR.w = canvas.width * splitRatio; imgR.x = bgR.w; imgR.w = canvas.width * (1 - splitRatio); }
+
+            let defW = canvas.width, defH = canvas.height;
+            if(layout === 'top' || layout === 'bottom') defH = canvas.height / 2;
+            if(layout === 'left' || layout === 'right') defW = canvas.width / 2;
+            
+            const scale = parseInt(ui.imgScale.value)/100, ox = parseInt(ui.imgOffsetX.value), oy = parseInt(ui.imgOffsetY.value);
+            const s = Math.max(defW/currentImage.width, defH/currentImage.height) * scale;
+            let defX = layout === 'right' ? canvas.width/2 : 0; let defY = layout === 'bottom' ? canvas.height/2 : 0;
+            const dx = defX + (defW - currentImage.width * s) / 2 + ox;
+            const dy = defY + (defH - currentImage.height * s) / 2 + oy;
+
+            if(ui.bgType.value==='image' && currentBgImage){
+                let bgs = Math.max(canvas.width/currentBgImage.width, canvas.height/currentBgImage.height);
+                ctx.drawImage(currentBgImage, (canvas.width-currentBgImage.width*bgs)/2, (canvas.height-currentBgImage.height*bgs)/2, currentBgImage.width*bgs, currentBgImage.height*bgs);
+            } else {
+                let g = ctx.createLinearGradient(0,0,canvas.width,canvas.height); g.addColorStop(0,ui.color1.value); g.addColorStop(1,ui.color2.value);
+                ctx.fillStyle = ui.bgType.value==='gradient'?g:ui.color1.value; ctx.fillRect(0,0,canvas.width,canvas.height);
+                if(ui.bgType.value==='stripes'){ 
+                    ctx.fillStyle=ui.color2.value; const density = parseInt(ui.stripeDensity.value);
+                    for(let i=0; i<canvas.width+canvas.height; i+=density*2) ctx.fillRect(i, 0, density, canvas.height); 
+                }
+            }
+
+            const imgCanvas = document.createElement('canvas'); imgCanvas.width=canvas.width; imgCanvas.height=canvas.height; const iCtx = imgCanvas.getContext('2d');
+            
+            iCtx.save(); iCtx.beginPath(); iCtx.rect(imgR.x, imgR.y, imgR.w, imgR.h); iCtx.clip();
+            iCtx.drawImage(currentImage, dx, dy, currentImage.width*s, currentImage.height*s); iCtx.restore();
+
+            const rot = ui.unifiedRotation.checked ? ui.angleRange.value*Math.PI/180 : null;
+            const feather = parseInt(ui.featherRange.value); const isStripe = ui.bgType.value === 'stripes';
+            iCtx.globalCompositeOperation = isStripe ? 'source-over' : 'destination-out';
+            
+            const activeParticles = particles.slice(0, drawLimit);
+            const baseSize = parseInt(ui.sizeRange.value);
+            const varRatio = parseInt(ui.sizeVar.value) / 100;
+
+            activeParticles.forEach(p => {
+                if(p.x>imgR.x && p.x<imgR.x+imgR.w && p.y>imgR.y && p.y<imgR.y+imgR.h){
+                    iCtx.save(); iCtx.translate(p.x, p.y); iCtx.rotate(rot??p.rotation);
+                    if(isStripe) iCtx.fillStyle = p.colorIndex === 0 ? ui.color1.value : ui.color2.value;
+                    else { iCtx.fillStyle='black'; if(feather>0){ iCtx.shadowColor='black'; iCtx.shadowBlur=feather; } }
+                    const pSize = baseSize * (1 - varRatio) + p.randSize * baseSize * varRatio * 2;
+                    if(drawShape(iCtx, ui.shapeType.value, pSize)) iCtx.fill(); 
+                    iCtx.restore();
+                }
+            });
+            ctx.drawImage(imgCanvas, 0, 0);
+
+            activeParticles.forEach(p => {
+                if(p.x>bgR.x && p.x<bgR.x+bgR.w && p.y>bgR.y && p.y<bgR.y+bgR.h){
+                    const pSize = baseSize * (1 - varRatio) + p.randSize * baseSize * varRatio * 2;
+                    const fCanvas = document.createElement('canvas'); fCanvas.width=pSize*2+feather; fCanvas.height=pSize*2+feather; const fCtx = fCanvas.getContext('2d'); 
+                    fCtx.translate(pSize+feather/2, pSize+feather/2); fCtx.rotate(rot??p.rotation);
+                    fCtx.fillStyle='black'; if(feather>0){ fCtx.shadowColor='black'; fCtx.shadowBlur=feather; }
+                    if(drawShape(fCtx, ui.shapeType.value, pSize)) fCtx.fill();
+                    fCtx.globalCompositeOperation='source-in'; fCtx.shadowColor='transparent';
+                    
+                    let sx = p.x, sy = p.y; 
+                    if(layout==='top') sy-=canvas.height * (1-splitRatio); else if(layout==='bottom') sy+=canvas.height * splitRatio; 
+                    else if(layout==='left') sx-=canvas.width * (1-splitRatio); else if(layout==='right') sx+=canvas.width * splitRatio;
+                    
+                    fCtx.drawImage(currentImage, dx-sx+pSize+feather/2, dy-sy+pSize+feather/2, currentImage.width*s, currentImage.height*s);
+                    ctx.drawImage(fCanvas, p.x-pSize-feather/2, p.y-pSize-feather/2);
+                }
+            });
+        }
+
+        function playAnimation(onComplete = null) {
+            if(!currentImage) return;
+            if(animationFrameId) cancelAnimationFrame(animationFrameId);
+            let startTime = null; const TOTAL_DURATION = 2500; 
+            function step(timestamp) {
+                if(!startTime) startTime = timestamp;
+                let progress = Math.min((timestamp - startTime) / TOTAL_DURATION, 1);
+                let easeOutProgress = 1 - Math.pow(1 - progress, 3);
+                let currentLimit = Math.floor(easeOutProgress * particles.length);
+                render(currentLimit);
+                if(progress < 1) animationFrameId = requestAnimationFrame(step);
+                else if(onComplete) onComplete();
+            }
+            requestAnimationFrame(step);
+        }
+
+        document.getElementById('randomBtn').onclick = () => { generateRandomParticles(); render(); };
+        document.getElementById('previewAnimBtn').onclick = () => { playAnimation(); };
+        document.getElementById('downloadPngBtn').onclick = () => { if(!currentImage)return; render(); const a=document.createElement('a'); a.download=`OHH_BOX_${Date.now()}.png`; a.href=canvas.toDataURL('image/png'); a.click(); };
+        
+        document.getElementById('recordAnimBtn').onclick = (e) => {
+            if(!currentImage) return;
+            const btn = e.target;
+            if (!isRecording) {
+                const stream = canvas.captureStream(30); 
+                const mimeType = MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' : (MediaRecorder.isTypeSupported('video/webm; codecs=vp9') ? 'video/webm; codecs=vp9' : 'video/webm');
+                mediaRecorder = new MediaRecorder(stream, { mimeType: mimeType });
+                mediaRecorder.ondataavailable = ev => { if (ev.data.size > 0) recordedChunks.push(ev.data); };
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: mimeType });
+                    const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; 
+                    a.download = `OHH_BOX_Live_${Date.now()}.${mimeType.includes('mp4') ? 'mp4' : 'webm'}`; a.click(); URL.revokeObjectURL(url);
+                    btn.innerHTML = "🎥 导出动态实况视频 (MP4)"; btn.classList.replace('btn-success', 'btn-danger'); isRecording = false;
+                };
+                
+                mediaRecorder.start(); isRecording = true;
+                btn.innerHTML = "⏳ 正在录制动效中..."; btn.classList.replace('btn-danger', 'btn-success'); recordedChunks = [];
+                
+                playAnimation(() => { setTimeout(() => mediaRecorder.stop(), 500); });
+            }
+        };
+        
+        updateCanvasSize();
+    </script>
+</body>
+</html>
