@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>切片幻影 - OHH BOX</title>
+    <link rel="stylesheet" href="../ohh-box/style.css"> <style>
+        /* 针对此工具的特定微调 */
+        .color-palette { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+        .color-item { position: relative; width: 34px; height: 34px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.1); cursor: pointer; }
+        .color-del { position: absolute; top: -5px; right: -5px; width: 16px; height: 16px; background: #ef4444; color: white; border-radius: 50%; font-size: 10px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 1px solid white; }
+        .btn-eyedropper { background: #f1f5f9; border: 1px solid var(--border); border-radius: 50%; width: 34px; height: 34px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+        .preview-area { background: #000; }
+    </style>
+</head>
+<body>
+    <div id="toast">🎯 请点击画面提取颜色</div>
+
+    <div class="sidebar">
+        <div class="header">
+            <a href="../index.html" style="text-decoration:none; font-size:18px; margin-right:12px;">🏠</a>
+            <h1 class="brand">切片幻影</h1>
+            <span class="brand-tag">PRO</span>
+        </div>
+
+        <div class="setting-card">
+            <div class="card-title">🎭 大师风格预设</div>
+            <div class="btn-group">
+                <button class="btn btn-secondary" style="font-size:12px;" onclick="applyPreset('matrix')">📟 黑客帝国</button>
+                <button class="btn btn-secondary" style="font-size:12px;" onclick="applyPreset('cyber')">🎆 赛博朋克</button>
+                <button class="btn btn-secondary" style="font-size:12px;" onclick="applyPreset('magazine')">📖 时尚杂志</button>
+            </div>
+        </div>
+
+        <div class="setting-card">
+            <div class="card-title">🧪 故障特效</div>
+            <input type="file" id="imageUpload" accept="image/*">
+            <label>形态随机性 <span id="sizeVarVal">50</span>%</label>
+            <input type="range" id="sizeVar" min="0" max="100" value="50">
+            <label>色散重影 (RGB Split) <span id="rgbSplitVal">0</span>px</label>
+            <input type="range" id="rgbSplit" min="0" max="25" value="0">
+            <label style="cursor:pointer;"><input type="checkbox" id="pixelDrift" checked> 开启水平撕裂位移</label>
+        </div>
+
+        <div class="setting-card">
+            <div class="card-title">🎨 色彩配方</div>
+            <label>色块活跃度 <span id="colorCountVal">15</span></label>
+            <input type="range" id="colorCount" min="0" max="60" value="15">
+            <div class="color-palette" id="customPalette">
+                <button class="btn-eyedropper" id="pickColor" title="从图上取色">🎯</button>
+                <button class="btn-circle" id="addColorBtn" style="border-radius:50%; width:34px; height:34px; border:2px dashed #cbd5e1; background:white; cursor:pointer;">+</button>
+            </div>
+        </div>
+
+        <div class="setting-card">
+            <div class="card-title">✍️ 自定义文字</div>
+            <input type="text" id="overlayText" value="OHH BOX" placeholder="输入文字...">
+            <div style="display:flex; gap:10px;">
+                <div style="flex:1;"><label>字号</label><input type="range" id="textSize" min="20" max="200" value="80"></div>
+                <div style="width:50px;"><label>颜色</label><input type="color" id="textColor" value="#ffffff" style="width:100%; height:32px; border:none; background:none;"></div>
+            </div>
+            <label>位置 (X轴: <span id="textXVal">50</span>% | Y轴: <span id="textYVal">90</span>%)</label>
+            <div style="display:flex; gap:10px;">
+                <input type="range" id="textX" min="0" max="100" value="50">
+                <input type="range" id="textY" min="0" max="100" value="90">
+            </div>
+        </div>
+
+        <div class="setting-card" style="border-color:var(--accent); border-width:2px;">
+            <button class="btn btn-primary" id="downloadPngBtn">📸 保存高清出图</button>
+            <button class="btn btn-danger" id="recordBtn" style="margin-top: 8px;">🎥 导出 2.5s 实况视频</button>
+        </div>
+    </div>
+
+    <div class="preview-area"><canvas id="mainCanvas"></canvas></div>
+
+    <div id="wechat-mask" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:2000; display:none; flex-direction:column; align-items:center; justify-content:center;" onclick="this.style.display='none'">
+        <p style="color:white; margin-bottom:15px; font-weight:bold;">✨ 生成成功！请长按保存图片</p>
+        <img id="wechat-img" style="max-width:90%; max-height:80%; border-radius:8px;">
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>
