@@ -6,13 +6,26 @@
     <title>切片幻影 - OHH BOX</title>
     <link rel="stylesheet" href="../dot-collage/style.css">
     <style>
+        /* 工具专属样式微调 */
         .color-palette { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; align-items: center; }
         .color-item { position: relative; width: 34px; height: 34px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.1); cursor: pointer; }
         .color-del { position: absolute; top: -5px; right: -5px; width: 16px; height: 16px; background: #ef4444; color: white; border-radius: 50%; font-size: 10px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 1px solid white; }
         .btn-eyedropper { background: #f1f5f9; border: 1px solid var(--border); border-radius: 50%; width: 34px; height: 34px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; transition: 0.2s; }
         .btn-eyedropper:hover { background: #e2e8f0; }
-        .preview-area { background: #000; }
+        .preview-area { background: #000; cursor: default; }
         canvas { touch-action: none; cursor: crosshair; }
+
+        /* 📱 沉浸式全屏录屏模式 (无退出按钮版) */
+        body.immersive-mode .sidebar { display: none !important; }
+        body.immersive-mode .preview-area { 
+            padding: 0; background: #000; height: 100vh; width: 100vw; 
+            position: fixed; top: 0; left: 0; z-index: 9999; 
+            cursor: pointer; /* 提示用户可以点击 */
+        }
+        body.immersive-mode canvas { 
+            border-radius: 0; box-shadow: none; 
+            width: 100vw; height: 100vh; object-fit: contain; 
+        }
     </style>
 </head>
 <body>
@@ -22,7 +35,7 @@
         <div class="header">
             <a href="../index.html" style="text-decoration:none; font-size:18px; margin-right:12px;">🏠</a>
             <h1 class="brand">切片幻影</h1>
-            <span class="brand-tag">v2.7</span>
+            <span class="brand-tag">v3.5 PRO</span>
         </div>
 
         <div class="setting-card">
@@ -48,8 +61,6 @@
             <input type="range" id="scanlines" min="0" max="100" value="0">
             <label>不规则卡顿强度 <span id="stutterVal">30</span>%</label>
             <input type="range" id="stutter" min="0" max="100" value="30">
-            <label>变换频率 (速度) <span id="animSpeedVal">5</span></label>
-            <input type="range" id="animSpeed" min="1" max="20" value="5"> 
             <label style="cursor:pointer; font-size:11px; margin-top:8px; display:block;"><input type="checkbox" id="pixelDrift" checked> 开启水平撕裂位移</label>
         </div>
 
@@ -77,19 +88,20 @@
             </div>
         </div>
 
-<div class="setting-card" style="border-color:var(--accent); border-width:2px;">
+        <div class="setting-card" style="border-color:var(--accent); border-width:2px;">
             <button class="btn btn-primary" id="downloadPngBtn">📸 保存高清出图</button>
-            <button class="btn btn-danger" id="recordBtn" style="margin-top: 8px;">🎥 导出 2.5s 实况视频</button>
-            <button class="btn btn-secondary" id="enterImmersiveBtn" style="margin-top: 8px; border-color: #10b981; color: #10b981;">📱 开启纯净全屏录制</button>
+            <button class="btn btn-danger" id="recordBtn" style="margin-top: 8px;">🎥 电脑端导出视频</button>
+            <button class="btn btn-secondary" id="enterImmersiveBtn" style="margin-top: 8px; border-color: #10b981; color: #10b981;">📱 手机端全屏录制</button>
         </div>
     </div>
 
     <div class="preview-area"><canvas id="mainCanvas"></canvas></div>
 
-    <button id="exitImmersiveBtn">退出全屏</button>
-    
-    <div id="wechat-mask" ... > ... </div>
+    <div id="wechat-mask" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:2000; display:none; flex-direction:column; align-items:center; justify-content:center;" onclick="this.style.display='none'">
+        <p style="color:white; margin-bottom:15px; font-weight:bold;">✨ 出图成功！请长按保存</p>
+        <img id="wechat-img" style="max-width:90%; max-height:80%; border-radius:8px; box-shadow: 0 0 30px rgba(59, 130, 246, 0.2);">
+    </div>
 
-    <script src="main.js?v=2.9"></script>
+    <script src="main.js?v=3.5"></script>
 </body>
 </html>
