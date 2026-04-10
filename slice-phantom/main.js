@@ -178,39 +178,70 @@ document.getElementById('downloadPngBtn').onclick = () => {
 };
 
 // --- 🎬 导出与跨端提示功能 ---
-document.getElementById('recordBtn').onclick = (e) => {
+document.getElementById('recordBtn').onclick = async (e) => {
     if (!currentImage || isRecording) return;
-    
-    // 📱 手机端智能拦截与指引
-    if (isMobile) { 
-        alert("⚠️ 受限于手机系统机制，直接导出视频可能黑屏或模糊。\n\n👉 完美解决方案：\n1. 强烈推荐使用【电脑浏览器】访问，可直接一键导出高清 WebM 视频。\n2. 手机端请点击下方的【开启纯净全屏录制】，配合手机自带录屏功能获取最高清画质！"); 
-        return; 
-    }
-    
-    // 💻 电脑端原生高清录制
-    isRecording = true; 
-    const btn = e.target; 
-    const chunks = [];
-    const stream = canvas.captureStream(30);
-    // 锁定 8Mbps 高码率
-    const mr = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9', videoBitsPerSecond: 8000000 }); 
 
-    mr.ondataavailable = ev => chunks.push(ev.data);
+    if (isMobile) {
+        alert("⚠️ 提示：手机端录制可能黑屏或模糊。\n推荐使用电脑浏览器，或点击【开启纯净全屏录制】手动录屏。");
+        return;
+    }
+
+    // 1. 自动探测支持的格式 (优先 MP4，不行就 WebM)
+    const mimeTypes = [
+        'video/mp4;codecs=h264',
+        'video/webm;codecs=vp9',
+        'video/webm;codecs=vp8',
+        'video/webm'
+    ];
+    const mimeType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type)) || 'video/webm';
+    const extension = mimeType.includes('mp4') ? 'mp4' : 'webm';
+
+    console.log(`正在使用编码器: ${mimeType}`);
+
+    isRecording = true;
+    const btn = e.target;
+    const chunks = [];
+    
+    // 2. 获取画面流
+    const stream = canvas.captureStream(30); 
+    const mr = new MediaRecorder(stream, { 
+        mimeType: mimeType, 
+        videoBitsPerSecond: 8000000 
+    });
+
+    mr.ondataavailable = ev => {
+        if (ev.data && ev.data.size > 0) chunks.push(ev.data);
+    };
+
     mr.onstop = () => {
-        const b = new Blob(chunks, { type: 'video/webm' });
-        const a = document.createElement('a'); 
-        a.href = URL.createObjectURL(b); 
-        a.download = `OHH_LIVE_${Date.now()}.webm`; 
+        const blob = new Blob(chunks, { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `OHH_LIVE_${Date.now()}.${extension}`;
+        document.body.appendChild(a);
         a.click();
-        isRecording = false; 
-        btn.innerText = "🎥 导出 2.5s 实况视频"; 
+        document.body.removeChild(a);
+        
+        isRecording = false;
+        btn.innerText = "🎥 导出 2.5s 实况视频";
         btn.classList.replace('btn-success', 'btn-danger');
     };
 
+    // 3. 开始录制并强制重绘
     mr.start();
-    btn.innerText = "⏳ 录制中(2.5s)..."; 
+    btn.innerText = "⏳ 录制中...";
     btn.classList.replace('btn-danger', 'btn-success');
-    setTimeout(() => mr.stop(), 2500);
+
+    // 特别修正：录制期间确保 render 持续运行
+    const recordTimer = setInterval(() => {
+        render(); 
+    }, 30); 
+
+    setTimeout(() => {
+        clearInterval(recordTimer);
+        mr.stop();
+    }, 2500);
 };
 
 // --- 📱 沉浸式全屏录制逻辑 (直接接在 recordBtn 后面) ---
