@@ -177,30 +177,69 @@ document.getElementById('downloadPngBtn').onclick = () => {
     }
 };
 
-// 🎥 移动端视频录制智能拦截
+// --- 🎬 导出与跨端提示功能 ---
 document.getElementById('recordBtn').onclick = (e) => {
     if (!currentImage || isRecording) return;
     
-    // 拦截手机浏览器（尤其是 iOS），指引他们用录屏
+    // 📱 手机端智能拦截与指引
     if (isMobile) { 
-        alert("由于手机系统的安全限制（特别是苹果 iOS），无法直接生成无损视频。👉 强烈建议您：上传照片后，使用手机自带的【屏幕录制】功能录制上方画面，效果最完美！"); 
+        alert("⚠️ 受限于手机系统机制，直接导出视频可能黑屏或模糊。\n\n👉 完美解决方案：\n1. 强烈推荐使用【电脑浏览器】访问，可直接一键导出高清 WebM 视频。\n2. 手机端请点击下方的【开启纯净全屏录制】，配合手机自带录屏功能获取最高清画质！"); 
         return; 
     }
     
-    isRecording = true; const btn = e.target; const chunks = [];
-    const mr = new MediaRecorder(canvas.captureStream(30), { mimeType: 'video/webm;codecs=vp9', videoBitsPerSecond: 8000000 }); 
+    // 💻 电脑端原生高清录制
+    isRecording = true; 
+    const btn = e.target; 
+    const chunks = [];
+    const stream = canvas.captureStream(30);
+    // 锁定 8Mbps 高码率
+    const mr = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9', videoBitsPerSecond: 8000000 }); 
 
     mr.ondataavailable = ev => chunks.push(ev.data);
     mr.onstop = () => {
-        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(chunks, { type: 'video/webm' })); 
-        a.download = `OHH_LIVE_${Date.now()}.webm`; a.click();
-        isRecording = false; btn.innerText = "🎥 导出 2.5s 实况视频"; btn.classList.replace('btn-success', 'btn-danger');
+        const b = new Blob(chunks, { type: 'video/webm' });
+        const a = document.createElement('a'); 
+        a.href = URL.createObjectURL(b); 
+        a.download = `OHH_LIVE_${Date.now()}.webm`; 
+        a.click();
+        isRecording = false; 
+        btn.innerText = "🎥 导出 2.5s 实况视频"; 
+        btn.classList.replace('btn-success', 'btn-danger');
     };
 
     mr.start();
-    btn.innerText = "⏳ 录制中..."; btn.classList.replace('btn-danger', 'btn-success');
+    btn.innerText = "⏳ 录制中(2.5s)..."; 
+    btn.classList.replace('btn-danger', 'btn-success');
     setTimeout(() => mr.stop(), 2500);
 };
+
+// --- 📱 沉浸式全屏录制逻辑 (直接接在 recordBtn 后面) ---
+const enterBtn = document.getElementById('enterImmersiveBtn');
+const exitBtn = document.getElementById('exitImmersiveBtn');
+
+if(enterBtn && exitBtn) {
+    enterBtn.onclick = () => {
+        if (!currentImage) { alert("请先上传一张照片！"); return; }
+        document.body.classList.add('immersive-mode');
+        
+        // 尝试触发浏览器原生全屏
+        const elem = document.documentElement;
+        if (elem.requestFullscreen) elem.requestFullscreen();
+        else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+        
+        if (isMobile) {
+            setTimeout(() => { 
+                alert("✨ 已进入纯净模式！\n请现在开启手机自带的【屏幕录制】。\n录制完毕后，点击右上角【退出全屏】按钮即可。"); 
+            }, 300);
+        }
+    };
+
+    exitBtn.onclick = () => {
+        document.body.classList.remove('immersive-mode');
+        if (document.exitFullscreen) document.exitFullscreen();
+        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    };
+}
 
 function init() {
     renderPalette();
