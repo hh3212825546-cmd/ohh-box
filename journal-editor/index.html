@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>极简手帐 - OHH BOX</title>
+    <link rel="stylesheet" href="../dot-collage/style.css">
+    <style>
+        /* 手帐专属样式微调 */
+        .preview-area { background: #fdf6e3; padding: 20px; overflow-y: auto; height: 100vh; position: relative; display: flex; align-items: flex-start; gap: 20px; box-sizing: border-box;}
+        
+        /* 1. 极简手帐主画幅 */
+        #journalCanvas {
+            width: 500px;
+            height: 500px;
+            background: #fff;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.05);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            padding: 30px;
+            box-sizing: border-box;
+            position: relative;
+            flex-shrink: 0; /* 防止被挤压 */
+        }
+
+        /* 2. 侧边空白记事本 (Side Notes) */
+        #sideNotes {
+            flex: 1; /* 占据剩余空间 */
+            height: 500px;
+            background: #fff;
+            border-radius: 12px;
+            border: 1px dashed #e2e8f0;
+            padding: 25px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+            background-size: 15px 15px;
+        }
+
+        /* 公共元素样式 */
+        .image-container { position: relative; width: 100%; height: 60%; background: #f1f5f9; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center;}
+        #mainImage { max-width: 90%; max-height: 90%; object-fit: contain; }
+        
+        /* 胶带贴纸组件 */
+        .washi-tape {
+            position: absolute; top: -10px; left: -15px; width: 100px; height: 30px;
+            background: rgba(167, 139, 250, 0.4); backdrop-filter: blur(2px);
+            border: 1px solid rgba(167, 139, 250, 0.5); border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); transform: rotate(-10deg);
+            display: none; /* 默认隐藏 */
+        }
+
+        /* 文本区域 */
+        .journal-caption { flex: 1; margin-top: 20px; font-size: 14px; font-weight: 500; color: var(--text-main); line-height: 1.6; border: none; outline: none; background: none; resize: none; overflow: hidden;}
+        
+        /* 记事本标题 */
+        .notes-header { font-size: 13px; font-weight: 700; color: var(--accent); border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 15px;}
+        .notes-content { flex: 1; font-size: 13px; font-weight: 500; color: var(--text-main); line-height: 2.0; border: none; outline: none; background: none; resize: none; overflow-y: auto; box-sizing: border-box;}
+
+        /* 初始化引导 */
+        .image-placeholder { position: absolute; font-size: 12px; color: var(--text-sub); font-weight: 600;}
+        
+    </style>
+</head>
+<body>
+    
+    <div class="sidebar">
+        <div class="header">
+            <a href="../index.html" style="text-decoration:none; font-size:18px; margin-right:12px;">🏠</a>
+            <h1 class="brand">极简手帐</h1>
+            <span class="brand-tag">v1.0</span>
+        </div>
+
+        <div class="setting-card">
+            <div class="card-title">📷 照片与相框</div>
+            <input type="file" id="imageUpload" accept="image/*" style="font-size: 11px;">
+            <label>相框风格</label>
+            <select id="frameStyle">
+                <option value="minimal">极简明信片</option>
+                <option value="waterColor">水彩晕染</option>
+                <option value="softShadow">柔和阴影</option>
+            </select>
+        </div>
+
+        <div class="setting-card">
+            <div class="card-title">✍️ 日记信息</div>
+            <label>日期 (今天的碎碎念)</label>
+            <input type="date" id="journalDate" style="width:100%; padding:8px; border:1px solid #e2e8f0; border-radius:6px; font-size:12px; margin-bottom:10px;">
+            <label>今日心情</label>
+            <select id="moodSelect">
+                <option value="happy">开心 😊</option>
+                <option value="calm">平静 😌</option>
+                <option value="thinking">思考 🤔</option>
+                <option value="tired">疲惫 😫</option>
+            </select>
+        </div>
+
+        <div class="setting-card">
+            <div class="card-title">🎨 创意装饰</div>
+            <label>胶带贴纸 (和纸胶带)</label>
+            <select id="tapeStyle">
+                <option value="none">无胶带</option>
+                <option value="lavender">薰衣草紫 (水彩)</option>
+                <option value="mint">薄荷绿 (水彩)</option>
+                <option value="coral">珊瑚粉 (水彩)</option>
+            </select>
+        </div>
+
+        <div class="setting-card">
+            <div class="card-title">📖 侧边空白记事本</div>
+            <label>侧边栏内容</label>
+            <select id="sideNotesType">
+                <option value="quotes">极简语录</option>
+                <option value="top3">今日 Top 3 乐事</option>
+                <option value="custom">自定义文字格</option>
+            </select>
+        </div>
+
+        <div class="setting-card" style="border-color:var(--accent); border-width:2px;">
+            <button class="btn btn-primary" id="downloadPngBtn">📸 保存高清长图 (手帐)</button>
+        </div>
+    </div>
+
+    <div class="preview-area">
+        <div id="journalCanvas">
+            <div class="image-container">
+                <div class="washi-tape" id="washiTape"></div>
+                <div class="image-placeholder">📷 请上传您的照片</div>
+                <img id="mainImage" src="">
+            </div>
+            <textarea class="journal-caption" id="journalCaption" placeholder="在这里写下今天的碎碎念..."></placeholder>
+        </div>
+
+        <div id="sideNotes">
+            <div class="notes-header" id="notesHeader">今日语录</div>
+            <textarea class="notes-content" id="notesContent" placeholder="在这里添加文字..."></textarea>
+        </div>
+    </div>
+
+    <script>
+        // 核心脚本 (纯 DOM 操作)
+        const imageUpload = document.getElementById('imageUpload');
+        const mainImage = document.getElementById('mainImage');
+        const placeholder = document.querySelector('.image-placeholder');
+        const journalCanvas = document.getElementById('journalCanvas');
+        const washiTape = document.getElementById('washiTape');
+        const journalCaption = document.getElementById('journalCaption');
+        const notesHeader = document.getElementById('notesHeader');
+        const notesContent = document.getElementById('notesContent');
+
+        // 初始化日期
+        document.getElementById('journalDate').valueAsDate = new Date();
+        document.getElementById('journalDate').onchange = (e) => {
+            // 将日期格式化并添加到碎碎念的开头
+            const dateStr = e.target.value.split('-').slice(1).join('.'); // MM.DD 格式
+            journalCaption.value = `${dateStr} 今天的心情...`;
+        };
+        
+        // 1. 照片上传与预览
+        imageUpload.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const r = new FileReader();
+            r.onload = (ev) => {
+                mainImage.src = ev.target.result;
+                placeholder.style.display = 'none'; // 隐藏引导
+                applyFrameStyle(); // 重新匹配相框
+            };
+            r.readAsDataURL(file);
+        };
+
+        // 2. 相框风格匹配
+        document.getElementById('frameStyle').onchange = applyFrameStyle;
+        function applyFrameStyle() {
+            const style = document.getElementById('frameStyle').value;
+            journalCanvas.style.transition = '0.3s';
+            journalCanvas.className = ''; // 重置样式
+
+            if(style === 'minimal') {
+                journalCanvas.style.boxShadow = '0 10px 40px rgba(0,0,0,0.05)';
+                journalCanvas.style.background = '#fff';
+            } else if(style === 'waterColor') {
+                journalCanvas.style.boxShadow = 'none';
+                journalCanvas.style.background = '#fff';
+                // 模拟水彩晕染的 SVG 滤镜或更复杂的 CSS (这里用简单的线性渐变模拟手感)
+                journalCanvas.style.backgroundImage = 'radial-gradient(circle at center, rgba(167, 139, 250, 0.1), transparent)';
+            } else if(style === 'softShadow') {
+                journalCanvas.style.boxShadow = '0 30px 60px rgba(0,0,0,0.03)';
+                journalCanvas.style.background = '#f8fafc';
+            }
+        }
+
+        // 3. 今日心情更新
+        document.getElementById('moodSelect').onchange = (e) => {
+            const mood = e.target.selectedOptions[0].text;
+            journalCaption.value += ` 今日心情: ${mood}`;
+        };
+
+        // 4. 胶带贴纸组件更新
+        document.getElementById('tapeStyle').onchange = (e) => {
+            const style = e.target.value;
+            if(style === 'none') {
+                washiTape.style.display = 'none';
+            } else {
+                washiTape.style.display = 'block';
+                // 更新胶带颜色
+                const colors = {
+                    lavender: 'rgba(167, 139, 250, 0.4)',
+                    mint: 'rgba(110, 231, 183, 0.4)',
+                    coral: 'rgba(251, 113, 133, 0.4)'
+                };
+                washiTape.style.background = colors[style];
+                washiTape.style.borderColor = colors[style].replace('0.4', '0.5');
+            }
+        };
+
+        // 5. 侧边记事本内容更新
+        const notesData = {
+            quotes: {
+                header: '极简语录',
+                content: '简单，是终极的复杂。 —— 达·芬奇\n\n少即是多。 —— 米斯·凡·德·罗'
+            },
+            top3: {
+                header: '今日 Top 3 乐事',
+                content: '1. ...\n2. ...\n3. ...'
+            },
+            custom: {
+                header: '自定义文字格',
+                content: ''
+            }
+        };
+
+        document.getElementById('sideNotesType').onchange = (e) => {
+            const type = e.target.value;
+            notesHeader.innerText = notesData[type].header;
+            notesContent.value = notesData[type].content;
+        };
+
+        // 6. 保存高清手帐长图 (这里使用简单的 DOM 转 Canvas 方案预览)
+        document.getElementById('downloadPngBtn').onclick = () => {
+            if(!mainImage.src) { alert("请先上传照片！"); return; }
+            alert("⚠️ PRO 版功能提示：目前正在进行 UI 和核心算法部署。在您的真实部署环境中，我们会启用专业的 DOM-to-Canvas 库 (如 html2canvas)，为您一键生成高清的 1000x1000px 手帐长图并保存。目前您可以先在网页上调整审美手感。");
+        };
+
+        // 初始化
+        applyFrameStyle();
+        // 触发侧边栏初始化
+        document.getElementById('sideNotesType').dispatchEvent(new Event('change'));
+
+    </script>
+</body>
+</html>
