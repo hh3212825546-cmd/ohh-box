@@ -2,6 +2,7 @@
 const SITE_CONFIG = { title: "OHH BOX", subtitle: "上传一张照片，开始创作", author: "@ohh" };
 
 const canvas = document.getElementById('mainCanvas'); const ctx = canvas.getContext('2d');
+const isWechat = /MicroMessenger/i.test(navigator.userAgent);
 let currentImage = null, currentBgImage = null, particles = [], isDrawing = false, lastPos = {x:0, y:0};
 let isRecording = false, mediaRecorder, recordedChunks = [];
 let animationFrameId = null, pickingColorFor = null; 
@@ -259,22 +260,66 @@ function playAnimation(onComplete = null) {
 }
 
 document.getElementById('previewAnimBtn').onclick = () => { playAnimation(); };
-document.getElementById('downloadPngBtn').onclick = () => { if(!currentImage)return; render(); const a=document.createElement('a'); a.download=`OHH_BOX_${Date.now()}.png`; a.href=canvas.toDataURL('image/png'); a.click(); };
-document.getElementById('recordAnimBtn').onclick = (e) => {
-    if(!currentImage) return; const btn = e.target;
-    if (!isRecording) {
-        const stream = canvas.captureStream(30); const mimeType = MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' : (MediaRecorder.isTypeSupported('video/webm; codecs=vp9') ? 'video/webm; codecs=vp9' : 'video/webm');
-        mediaRecorder = new MediaRecorder(stream, { mimeType: mimeType });
-        mediaRecorder.ondataavailable = ev => { if (ev.data.size > 0) recordedChunks.push(ev.data); };
-        mediaRecorder.onstop = () => {
-            const blob = new Blob(recordedChunks, { type: mimeType }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; 
-            a.download = `OHH_BOX_Live_${Date.now()}.${mimeType.includes('mp4') ? 'mp4' : 'webm'}`; a.click(); URL.revokeObjectURL(url);
-            btn.innerHTML = "🎥 导出动态实况视频 (MP4)"; btn.classList.replace('btn-success', 'btn-danger'); isRecording = false;
-        };
-        mediaRecorder.start(); isRecording = true; btn.innerHTML = "⏳ 正在录制动效中..."; btn.classList.replace('btn-danger', 'btn-success'); recordedChunks = [];
-        playAnimation(() => { setTimeout(() => mediaRecorder.stop(), 500); });
+document.getElementById('downloadPngBtn').onclick = () => {
+    if(!currentImage) return;
+    render();
+    const dataUrl = canvas.toDataURL('image/png');
+    
+    if (isWechat) {
+        // 微信环境：弹窗长按
+        const mask = document.getElementById('wechat-preview-mask');
+        const img = document.getElementById('wechat-preview-img');
+        img.src = dataUrl;
+        mask.style.display = 'flex';
+    } else {
+        // 普通浏览器：直接下载
+        const a = document.createElement('a');
+        a.download = `OHH_BOX_${Date.now()}.png`;
+        a.href = dataUrl;
+        a.click();
     }
 };
 
+document.getElementById('recordAnimBtn').onclick = (e) => {
+    if(!currentImage) return;
+
+    // 微信环境拦截
+    if (isWechat) {
+        alert("由于微信限制，请点击【▶️ 预览动效】后使用手机自带的【录屏】功能获取视频。或者点击右上角选择【在浏览器中打开】进行下载。");
+        return;
+    }
+
+    const btn = e.target;
+    if (!isRecording) {
+        const stream = canvas.captureStream(30); 
+        const mimeType = MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' : (MediaRecorder.isTypeSupported('video/webm; codecs=vp9') ? 'video/webm; codecs=vp9' : 'video/webm');
+        mediaRecorder = new MediaRecorder(stream, { mimeType: mimeType });
+        mediaRecorder.ondataavailable = ev => { if (ev.data.size > 0) recordedChunks.push(ev.data); };
+        mediaRecorder.onstop = () => {
+            const blob = new Blob(recordedChunks, { type: mimeType }); 
+            const url = URL.createObjectURL(blob); 
+            const a = document.createElement('a'); 
+            a.href = url; 
+            a.download = `OHH_BOX_Live_${Date.now()}.${mimeType.includes('mp4') ? 'mp4' : 'webm'}`; 
+            a.click(); 
+            URL.revokeObjectURL(url);
+            btn.innerHTML = "🎥 导出动态实况视频 (MP4)"; 
+            btn.classList.replace('btn-success', 'btn-danger'); 
+            isRecording = false;
+        };
+        
+        mediaRecorder.start(); 
+        isRecording = true; 
+        btn.innerHTML = "⏳ 正在录制动效中..."; 
+        btn.classList.replace('btn-danger', 'btn-success'); 
+        recordedChunks = [];
+        
+        playAnimation(() => { 
+            setTimeout(() => mediaRecorder.stop(), 500); 
+        });
+    }
+};
+
+// 页面初始化
 updateCanvasSize();
 updateUndoRedoUI();
