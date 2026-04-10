@@ -1,14 +1,15 @@
 const canvas = document.getElementById('mainCanvas');
 const ctx = canvas.getContext('2d');
 
-
-// 📱 核心升级：精准移动端设备嗅探
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
 let currentImage = null, timer = null, isRecording = false, pickingColor = false;
 let colorPool = ['#FF0055', '#00FFCC', '#FFFF00', '#FF00FF']; 
-let frameCount = 0; // 记录运行了多少帧
+
+// 动画缓存状态 (解决录制加速问题)
+let frameCount = 0;
+let cachedSlices = [];
+let cachedColors = [];
 
 const ui = {
     sizeVar: document.getElementById('sizeVar'),
@@ -33,6 +34,7 @@ const PRESETS = {
     nordic: { split: 3, scan: 20, colors: ['#2C3E50', '#34495E', '#BDC3C7', '#7F8C8D'], txt: 'WINTER SOLITUDE', size: 70, x: 10, y: 90, drift: true }
 };
 
+// --- 色彩管理 ---
 function renderPalette() {
     const container = document.getElementById('customPalette');
     container.querySelectorAll('.color-item').forEach(el => el.remove());
@@ -44,9 +46,8 @@ function renderPalette() {
         container.insertBefore(div, document.getElementById('pickColor'));
     });
 }
-
-window.removeColor = (index, e) => { e.stopPropagation(); colorPool.splice(index, 1); renderPalette(); render(); };
-function addColor(hex) { colorPool.push(hex.toUpperCase()); renderPalette(); render(); }
+window.removeColor = (index, e) => { e.stopPropagation(); colorPool.splice(index, 1); renderPalette(); generateEffectData(); render(); };
+function addColor(hex) { colorPool.push(hex.toUpperCase()); renderPalette(); generateEffectData(); render(); }
 
 window.applyPreset = (name) => {
     const p = PRESETS[name];
@@ -58,55 +59,72 @@ window.applyPreset = (name) => {
         const valEl = document.getElementById(k + 'Val');
         if (valEl) valEl.innerText = ui[k].value;
     });
+    generateEffectData();
     render(); 
 };
 
+// --- 动画核心：数据生成与渲染分离 ---
+
+// 生成每一帧的跳变数据 (独立出来，不受渲染帧率影响)
+function generateEffectData() {
+    if(!currentImage) return;
+    const w = canvas.width, h = canvas.height;
+    const drift = ui.pixelDrift.checked;
+    const sVar = parseInt(ui.sizeVar.value) / 100;
+    
+    cachedSlices = [];
+    const slicesCount = isMobile ? 18 : 25; 
+    for (let i = 0; i < slicesCount; i++) {
+        const sw = (w / 10) * (1 + (Math.random() - 0.5) * sVar * 4);
+        const sh = (h / 20) * (1 + (Math.random() - 0.5) * sVar * 4);
+        const sx = Math.random() * (currentImage.width - sw);
+        const sy = Math.random() * (currentImage.height - sh);
+        let dx = Math.random() * (w - sw);
+        let dy = Math.random() * (h - sh);
+        if (drift) dx += (Math.random() - 0.5) * (w * 0.15); 
+        cachedSlices.push({sx, sy, sw, sh, dx, dy});
+    }
+
+    cachedColors = [];
+    const colorsCount = parseInt(ui.colorCount.value);
+    for (let i = 0; i < colorsCount; i++) {
+        const bw = (w / 8) * Math.random(), bh = (h / 8) * Math.random();
+        const color = colorPool[Math.floor(Math.random() * colorPool.length)] || '#FFFFFF';
+        const cx = Math.random() * (w - bw), cy = Math.random() * (h - bh);
+        cachedColors.push({color, cx, cy, bw, bh});
+    }
+}
+
+// 渲染引擎 (只负责画出当前的数据)
 function render() {
     if (!currentImage) return;
     const w = canvas.width, h = canvas.height;
-    
-    // 🚀 核心控制逻辑：
-    // 我们定义一个变化阈值。滑块数值越小（速度越慢），阈值越大。
-    // 假设 speedValue 是滑块传来的值 (1-100)
-    const speedValue = parseInt(document.getElementById('stutter').value); // 复用卡顿或新开滑块
-    const changeThreshold = Math.max(1, Math.floor(60 / (speedValue / 10 + 1))); 
+    ctx.drawImage(currentImage, 0, 0, w, h);
 
-    // 只有当帧数达到阈值时，才更新随机位移和颜色
-    // 这样无论 render 运行多快，视觉上的闪动频率都是恒定的
-    if (frameCount % changeThreshold === 0) {
-        // ... 这里放原本那些生成随机 sx, sy, dx, dy 以及随机颜色的逻辑 ...
-        updateRandomParams(); 
+    // RGB 色散
+    const split = parseInt(ui.rgbSplit.value);
+    if (split > 0) {
+        ctx.save(); ctx.globalCompositeOperation = 'screen'; ctx.globalAlpha = 0.5;
+        const splitRatio = split * (w / 1200); 
+        ctx.drawImage(currentImage, splitRatio, 0, w, h);
+        ctx.drawImage(currentImage, -splitRatio, 0, w, h);
+        ctx.restore();
     }
 
-    // 绘制逻辑（每一帧都执行，保证视频流丝滑）
-    drawBaseImage(w, h);
-    drawSlices(); // 使用 updateRandomParams 生成的旧参数
-    drawColorBlocks();
-    drawScanlines(w, h);
-    drawText(w, h);
+    // 画缓存的切片
+    cachedSlices.forEach(s => {
+        ctx.drawImage(currentImage, s.sx, s.sy, s.sw, s.sh, s.dx, s.dy, s.sw, s.sh);
+    });
 
-    frameCount++; // 帧数累加
-}
-    const drift = ui.pixelDrift.checked;
-    const sVar = parseInt(ui.sizeVar.value) / 100;
-    // 手机端优化：移动端适当减少切片数量，保持视觉效果同时提升帧率
-    const slices = isMobile ? 18 : 25; 
-    for (let i = 0; i < slices; i++) {
-        const sw = (w / 10) * (1 + (Math.random() - 0.5) * sVar * 4);
-        const sh = (h / 20) * (1 + (Math.random() - 0.5) * sVar * 4);
-        const sx = Math.random() * (currentImage.width - sw), sy = Math.random() * (currentImage.height - sh);
-        let dx = Math.random() * (w - sw), dy = Math.random() * (h - sh);
-        if (drift) dx += (Math.random() - 0.5) * (w * 0.15); // 动态撕裂幅度
-        ctx.drawImage(currentImage, sx, sy, sw, sh, dx, dy, sw, sh);
-    }
+    // 画缓存的色块
+    cachedColors.forEach(c => {
+        ctx.fillStyle = c.color;
+        ctx.globalAlpha = 0.6;
+        ctx.fillRect(c.cx, c.cy, c.bw, c.bh);
+        ctx.globalAlpha = 1.0;
+    });
 
-    const colors = parseInt(ui.colorCount.value);
-    for (let i = 0; i < colors; i++) {
-        const bw = (w / 8) * Math.random(), bh = (h / 8) * Math.random();
-        ctx.fillStyle = colorPool[Math.floor(Math.random() * colorPool.length)] || '#FFFFFF';
-        ctx.globalAlpha = 0.6; ctx.fillRect(Math.random() * (w - bw), Math.random() * (h - bh), bw, bh); ctx.globalAlpha = 1.0;
-    }
-
+    // 扫描线
     const scan = parseInt(ui.scanlines.value);
     if (scan > 0) {
         ctx.save(); ctx.fillStyle = `rgba(0,0,0,${scan / 100})`;
@@ -114,9 +132,9 @@ function render() {
         ctx.restore();
     }
 
+    // 文字
     if (ui.overlayText.value) {
         ctx.save();
-        // 手机端文字大小自适应
         const scaleRatio = w / 1200;
         const fSize = parseInt(ui.textSize.value) * scaleRatio;
         ctx.font = `bold ${fSize}px -apple-system, sans-serif`;
@@ -128,31 +146,53 @@ function render() {
     }
 }
 
-canvas.onclick = (e) => {
-    if (!pickingColor) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) * (canvas.width / rect.width);
-    const y = (e.clientY - rect.top) * (canvas.height / rect.height);
-    const p = ctx.getImageData(x, y, 1, 1).data;
-    addColor('#' + ((1 << 24) + (p[0] << 16) + (p[1] << 8) + p[2]).toString(16).slice(1).toUpperCase());
-    pickingColor = false; document.getElementById('toast').style.display = 'none';
+// 动画循环控制
+function startEffectLoop() {
+    if (timer) clearTimeout(timer);
+    
+    // 强制每秒固定更新数据，不受录制帧率影响
+    const updateLoop = () => {
+        generateEffectData();
+        if (!isRecording) render(); // 如果没录制，更新完直接画
+
+        let delay = 120; // 基础变换间隔
+        const stutterIntensity = parseInt(ui.stutter.value) / 100;
+        if (stutterIntensity > 0 && Math.random() < stutterIntensity) { 
+            delay += 200 + Math.random() * 400; // 模拟卡顿
+        }
+        timer = setTimeout(updateLoop, delay);
+    };
+    updateLoop();
+}
+
+// --- 🖱️ 统一的交互事件管理器 ---
+const previewArea = document.querySelector('.preview-area');
+
+previewArea.onclick = (e) => {
+    // 1. 如果在全屏模式，点击任何地方退出
+    if (document.body.classList.contains('immersive-mode')) {
+        document.body.classList.remove('immersive-mode');
+        if (document.exitFullscreen) document.exitFullscreen();
+        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+        return;
+    }
+
+    // 2. 如果开启了取色，执行取色逻辑
+    if (pickingColor) {
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+        const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+        const p = ctx.getImageData(x, y, 1, 1).data;
+        addColor('#' + ((1 << 24) + (p[0] << 16) + (p[1] << 8) + p[2]).toString(16).slice(1).toUpperCase());
+        pickingColor = false; 
+        document.getElementById('toast').style.display = 'none';
+    }
 };
 
 document.getElementById('pickColor').onclick = () => { pickingColor = true; document.getElementById('toast').style.display = 'block'; };
 document.getElementById('addColorBtn').onclick = () => addColor('#' + Math.floor(Math.random() * 16777215).toString(16));
 
-function startEffectLoop() {
-    if (timer) clearTimeout(timer);
-    const loop = () => {
-        if (!isRecording) render();
-        let delay = 120;
-        const stutterIntensity = parseInt(ui.stutter.value) / 100;
-        if (stutterIntensity > 0 && Math.random() < stutterIntensity) { delay += 200 + Math.random() * 400; }
-        timer = setTimeout(loop, delay);
-    };
-    loop();
-}
-
+// --- 📁 上传与导出 ---
 document.getElementById('imageUpload').onchange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -160,137 +200,66 @@ document.getElementById('imageUpload').onchange = (e) => {
     r.onload = (ev) => {
         currentImage = new Image();
         currentImage.onload = () => {
-            // 🚀 核心优化：智能分辨率降维打击
-            const max = isMobile ? 800 : 1200; // 手机端使用 800px，保证绝对流畅
+            const max = isMobile ? 800 : 1200; 
             const ratio = currentImage.width / currentImage.height;
             if (ratio > 1) { canvas.width = max; canvas.height = max / ratio; } 
             else { canvas.height = max; canvas.width = max * ratio; }
-            startEffectLoop();
+            startEffectLoop(); // 启动循环
         };
         currentImage.src = ev.target.result;
     };
     r.readAsDataURL(file);
 };
 
-// 📸 全平台出图逻辑
 document.getElementById('downloadPngBtn').onclick = () => {
     if (!currentImage) return;
-    render();
     const d = canvas.toDataURL('image/png');
-    // 手机端一律弹出长按保存遮罩
     if (isMobile) {
-        const mask = document.getElementById('wechat-mask');
-        const img = document.getElementById('wechat-img');
-        img.src = d;
-        mask.style.display = 'flex';
+        document.getElementById('wechat-img').src = d;
+        document.getElementById('wechat-mask').style.display = 'flex';
     } else {
-        // 电脑端直接下载
         const a = document.createElement('a'); a.download = `OHH_SLICE_${Date.now()}.png`; a.href = d; a.click();
     }
 };
 
-// --- 🎬 导出与跨端提示功能 ---
 document.getElementById('recordBtn').onclick = async (e) => {
     if (!currentImage || isRecording) return;
-
-    if (isMobile) {
-        alert("⚠️ 提示：手机端录制可能黑屏或模糊。\n推荐使用电脑浏览器，或点击【开启纯净全屏录制】手动录屏。");
-        return;
-    }
-
-    // 1. 自动探测支持的格式 (优先 MP4，不行就 WebM)
-    const mimeTypes = [
-        'video/mp4;codecs=h264',
-        'video/webm;codecs=vp9',
-        'video/webm;codecs=vp8',
-        'video/webm'
-    ];
+    if (isMobile) { alert("⚠️ 手机端录制可能黑屏或模糊。\n👉 强烈建议：点击【手机端全屏录制】手动录屏，或使用电脑浏览器访问一键导出！"); return; }
+    
+    isRecording = true; const btn = e.target; const chunks = [];
+    
+    // 兼容格式探测
+    const mimeTypes = ['video/mp4;codecs=h264', 'video/webm;codecs=vp9', 'video/webm'];
     const mimeType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type)) || 'video/webm';
     const extension = mimeType.includes('mp4') ? 'mp4' : 'webm';
 
-    console.log(`正在使用编码器: ${mimeType}`);
+    const mr = new MediaRecorder(canvas.captureStream(30), { mimeType: mimeType, videoBitsPerSecond: 8000000 }); 
 
-    isRecording = true;
-    const btn = e.target;
-    const chunks = [];
-    
-    // 2. 获取画面流
-    const stream = canvas.captureStream(30); 
-    const mr = new MediaRecorder(stream, { 
-        mimeType: mimeType, 
-        videoBitsPerSecond: 8000000 
-    });
-
-    mr.ondataavailable = ev => {
-        if (ev.data && ev.data.size > 0) chunks.push(ev.data);
-    };
-
+    mr.ondataavailable = ev => { if(ev.data.size > 0) chunks.push(ev.data); };
     mr.onstop = () => {
-        const blob = new Blob(chunks, { type: mimeType });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `OHH_LIVE_${Date.now()}.${extension}`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        
-        isRecording = false;
-        btn.innerText = "🎥 导出 2.5s 实况视频";
-        btn.classList.replace('btn-success', 'btn-danger');
+        const a = document.createElement('a'); 
+        a.href = URL.createObjectURL(new Blob(chunks, { type: mimeType })); 
+        a.download = `OHH_LIVE_${Date.now()}.${extension}`; a.click();
+        isRecording = false; btn.innerText = "🎥 电脑端导出视频"; btn.classList.replace('btn-success', 'btn-danger');
     };
 
-    // 3. 开始录制并强制重绘
     mr.start();
-    btn.innerText = "⏳ 录制中...";
-    btn.classList.replace('btn-danger', 'btn-success');
+    btn.innerText = "⏳ 录制中..."; btn.classList.replace('btn-danger', 'btn-success');
 
-    // 特别修正：录制期间确保 render 持续运行
-   // 修改录制按钮点击事件里的 setInterval 部分
-const recordTimer = setInterval(() => {
-    // 录制时，我们每秒固定执行 30 次 render
-    render(); 
-}, 33); // 33ms 对应约 30fps
-
-    setTimeout(() => {
-        clearInterval(recordTimer);
-        mr.stop();
-    }, 2500);
+    // 录制期间强行高频渲染，保证视频流流畅，但不改变闪动节奏
+    const recordTimer = setInterval(render, 33);
+    setTimeout(() => { clearInterval(recordTimer); mr.stop(); }, 2500);
 };
 
-// --- 📱 沉浸式全屏录制逻辑 (优化版) ---
-const enterBtn = document.getElementById('enterImmersiveBtn');
-const previewArea = document.querySelector('.preview-area'); // 获取预览区域容器
-
-if(enterBtn && previewArea) {
-    // 1. 点击按钮进入全屏
-    enterBtn.onclick = () => {
-        if (!currentImage) { alert("请先上传一张照片！"); return; }
-        document.body.classList.add('immersive-mode');
-        
-        const elem = document.documentElement;
-        if (elem.requestFullscreen) elem.requestFullscreen();
-        else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
-        
-        if (isMobile) {
-            // 提示用户点击屏幕任意位置即可退出
-            setTimeout(() => { 
-                alert("✨ 已进入纯净模式！\n录制完毕后，【点击屏幕任意位置】即可退出。"); 
-            }, 300);
-        }
-    };
-
-    // 2. 点击预览区域直接退出 (替代原有的退出按钮)
-    previewArea.onclick = () => {
-        // 只有在全屏模式下点击才触发退出
-        if (document.body.classList.contains('immersive-mode')) {
-            document.body.classList.remove('immersive-mode');
-            
-            if (document.exitFullscreen) document.exitFullscreen();
-            else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-        }
-    };
-}
+// 沉浸模式入口
+document.getElementById('enterImmersiveBtn').onclick = () => {
+    if (!currentImage) { alert("请先上传一张照片！"); return; }
+    document.body.classList.add('immersive-mode');
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) elem.requestFullscreen();
+    else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+    if (isMobile) { setTimeout(() => { alert("✨ 已进入纯净模式！\n1. 请开启手机自带的【屏幕录制】。\n2. 录完后，【点击屏幕任意位置】即可退出。"); }, 300); }
+};
 
 function init() {
     renderPalette();
@@ -300,21 +269,22 @@ function init() {
         if (!el) return;
         el.addEventListener('input', (e) => {
             if (valEl) valEl.innerText = e.target.value;
-            if (id === 'stutter') startEffectLoop(); 
-            if (!isRecording) render();
+            if (!isRecording) { generateEffectData(); render(); }
         });
     });
-    ['overlayText', 'textColor'].forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener('input', () => { if (!isRecording) render(); }); });
-    if (ui.pixelDrift) { ui.pixelDrift.addEventListener('change', () => { if (!isRecording) render(); }); }
+    ['overlayText', 'textColor'].forEach(id => { 
+        const el = document.getElementById(id); 
+        if (el) el.addEventListener('input', () => { if (!isRecording) render(); }); 
+    });
+    if (ui.pixelDrift) { ui.pixelDrift.addEventListener('change', () => { if (!isRecording) { generateEffectData(); render(); } }); }
     
     canvas.width = isMobile ? 800 : 1200; 
     canvas.height = canvas.width;
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // 初始引导语比例自适应
     const scale = canvas.width / 1000;
     ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.font = `bold ${80 * scale}px sans-serif`; ctx.fillText('OHH BOX', canvas.width/2, canvas.height/2 - 20);
-    ctx.font = `${24 * scale}px sans-serif`; ctx.fillStyle = '#64748b'; ctx.fillText('切片幻影 移动端优化版', canvas.width/2, canvas.height/2 + 40);
+    ctx.font = `${24 * scale}px sans-serif`; ctx.fillStyle = '#64748b'; ctx.fillText('切片幻影 v3.5', canvas.width/2, canvas.height/2 + 40);
 }
 
 init();
