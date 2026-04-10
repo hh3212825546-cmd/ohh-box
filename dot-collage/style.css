@@ -63,9 +63,12 @@ body.immersive-mode canvas {
 }
 
 /* 退出录屏的悬浮按钮 */
+/* 修改或删除这段 */
 #exitImmersiveBtn { 
-    display: none; position: fixed; top: 30px; right: 30px; z-index: 10000; 
-    background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.4); 
-    padding: 10px 20px; border-radius: 30px; font-weight: bold; cursor: pointer; backdrop-filter: blur(10px); 
+    display: none !important; /* 彻底隐藏实体按钮 */
 }
-body.immersive-mode #exitImmersiveBtn { display: block; }
+
+/* 确保沉浸模式下，点击区域是全屏的 */
+body.immersive-mode .preview-area {
+    cursor: pointer; /* 鼠标移上去显示小手，提示可以点击 */
+}
