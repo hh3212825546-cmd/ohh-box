@@ -244,31 +244,37 @@ document.getElementById('recordBtn').onclick = async (e) => {
     }, 2500);
 };
 
-// --- 📱 沉浸式全屏录制逻辑 (直接接在 recordBtn 后面) ---
+// --- 📱 沉浸式全屏录制逻辑 (优化版) ---
 const enterBtn = document.getElementById('enterImmersiveBtn');
-const exitBtn = document.getElementById('exitImmersiveBtn');
+const previewArea = document.querySelector('.preview-area'); // 获取预览区域容器
 
-if(enterBtn && exitBtn) {
+if(enterBtn && previewArea) {
+    // 1. 点击按钮进入全屏
     enterBtn.onclick = () => {
         if (!currentImage) { alert("请先上传一张照片！"); return; }
         document.body.classList.add('immersive-mode');
         
-        // 尝试触发浏览器原生全屏
         const elem = document.documentElement;
         if (elem.requestFullscreen) elem.requestFullscreen();
         else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
         
         if (isMobile) {
+            // 提示用户点击屏幕任意位置即可退出
             setTimeout(() => { 
-                alert("✨ 已进入纯净模式！\n请现在开启手机自带的【屏幕录制】。\n录制完毕后，点击右上角【退出全屏】按钮即可。"); 
+                alert("✨ 已进入纯净模式！\n录制完毕后，【点击屏幕任意位置】即可退出。"); 
             }, 300);
         }
     };
 
-    exitBtn.onclick = () => {
-        document.body.classList.remove('immersive-mode');
-        if (document.exitFullscreen) document.exitFullscreen();
-        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    // 2. 点击预览区域直接退出 (替代原有的退出按钮)
+    previewArea.onclick = () => {
+        // 只有在全屏模式下点击才触发退出
+        if (document.body.classList.contains('immersive-mode')) {
+            document.body.classList.remove('immersive-mode');
+            
+            if (document.exitFullscreen) document.exitFullscreen();
+            else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+        }
     };
 }
 
