@@ -56,11 +56,35 @@ document.getElementById('pickColor').onclick = () => {
 
 // --- 🎭 预设系统 ---
 const PRESETS = {
-    matrix: { split: 0, colors: ['#00ff41','#003b00','#000000'], txt: 'SYSTEM FAILURE', size: 80, x: 50, y: 50 },
-    cyber: { split: 15, colors: ['#ff00ff','#00ffff','#ffff00'], txt: 'CYBERPUNK', size: 100, x: 50, y: 80 },
-    magazine: { split: 0, colors: ['#ffffff','#000000'], txt: 'VOGUE', size: 180, x: 50, y: 90 }
+    matrix: { 
+        split: 2, 
+        colors: ['#00ff41', '#003b00', '#000000', '#0d0208'], 
+        txt: 'SYSTEM FAILURE', 
+        size: 80, x: 50, y: 50, 
+        scan: 80, // 强化扫描线
+        drift: true 
+    },
+    vhs: { 
+        split: 12, 
+        colors: ['#fff', '#999', '#000'], 
+        txt: 'PLAY ▶', 
+        size: 60, x: 15, y: 15, 
+        scan: 40, 
+        drift: true 
+    },
+    vaporwave: { 
+        split: 8, 
+        colors: ['#ff71ce', '#01cdfe', '#05ffa1', '#b967ff', '#fffb96'], 
+        txt: 'A E S T H E T I C', 
+        size: 70, x: 50, y: 50, 
+        scan: 20, 
+        drift: true 
+    },
+    cyber: { split: 15, colors: ['#ff00ff','#00ffff','#ffff00'], txt: 'NEON NIGHT', size: 100, x: 50, y: 80, scan: 30, drift: true },
+    magazine: { split: 0, colors: ['#ffffff','#000000'], txt: 'VOGUE', size: 180, x: 50, y: 90, scan: 0, drift: false }
 };
 
+// 修改后的 applyPreset 函数，支持扫描线和撕裂开关
 window.applyPreset = (name) => {
     const p = PRESETS[name];
     ui.rgbSplit.value = p.split;
@@ -68,6 +92,10 @@ window.applyPreset = (name) => {
     ui.textSize.value = p.size;
     ui.textX.value = p.x;
     ui.textY.value = p.y;
+    // 如果有 scan 属性就赋值，没有就设为 0
+    document.getElementById('scanlines').value = p.scan || 0; 
+    ui.pixelDrift.checked = p.drift !== undefined ? p.drift : true;
+    
     colorPool = [...p.colors];
     renderPalette();
     render();
